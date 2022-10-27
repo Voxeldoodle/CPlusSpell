@@ -16,11 +16,11 @@ import spell
 import numpy as np
 
 trie = cp.TrieNode("",0)
+parser = cp.Parser([], trie, .7)
+
 with open("HDFS_2k.txt", 'r') as f:
     lines = f.readlines()
 
-
-parser = cp.Parser([], trie, .7)
 out = parser.parse(lines)
 
 

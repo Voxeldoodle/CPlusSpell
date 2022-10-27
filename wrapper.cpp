@@ -54,12 +54,13 @@ public:
     TrieNode trieRoot;
     const float tau;
 
+    Parser() : tau(.7) {}
     Parser(float tau)
             : tau(tau){}
     Parser(vector<TemplateCluster> logClust, TrieNode trieRoot, float tau)
             : logClust(logClust), trieRoot(trieRoot), tau(tau){}
 
-    static vector<string> getTemplate(vector<string> lcs) {
+    vector<string> getTemplate(vector<string> lcs) {
 //        cout << "getTemplate START" << endl;
 
         vector<string> res;
@@ -83,7 +84,7 @@ public:
         return res;
     }
 
-    static void removeSeqFromPrefixTree(TrieNode prefixTreeRoot, TemplateCluster newCluster) {
+    void removeSeqFromPrefixTree(TrieNode prefixTreeRoot, TemplateCluster newCluster) {
         auto parentn = prefixTreeRoot;
         vector<string> seq;
         copy_if (newCluster.logTemplate.begin(), newCluster.logTemplate.end(),
@@ -103,26 +104,26 @@ public:
         }
     }
 
-    static void addSeqToPrefixTree(TrieNode prefixTreeRoot, TemplateCluster newCluster) {
+    void addSeqToPrefixTree(TrieNode& prefixTreeRoot, TemplateCluster newCluster) {
 //        cout << "addSeqToPrefixTree START" << endl;
 
-        auto parentn = prefixTreeRoot;
+        auto parentn = &prefixTreeRoot;
         vector<string> seq;
         copy_if (newCluster.logTemplate.begin(), newCluster.logTemplate.end(),
                  back_inserter(seq),
                  [](const string& s){return s != "<*>";});
         for (const string& tok : seq) {
-            if (parentn.child.count(tok))
-                parentn.child[tok].templateNo++;
+            if (parentn->child.count(tok))
+                parentn->child[tok].templateNo++;
             else
-                parentn.child[tok] = TrieNode(tok, 1);
-            parentn = parentn.child[tok];
+                parentn->child.insert({tok,TrieNode(tok, 1)});
+            parentn = &parentn->child[tok];
         }
-        if (parentn.cluster.has_value())
-            parentn.cluster = newCluster;
+        if (parentn->cluster.has_value())
+            parentn->cluster = newCluster;
     }
 
-    static vector<string> LCS(vector<string> seq1, vector<string> seq2) {
+    vector<string> LCS(vector<string> seq1, vector<string> seq2) {
         vector<vector<int>> lengths(seq1.size()+1,vector<int>(seq2.size()+1));
         int i = 0;
         int j = 0;
@@ -154,7 +155,7 @@ public:
         return result;
     }
 
-    [[nodiscard]] optional<TemplateCluster> LCSMatch(vector<TemplateCluster> cluster, vector<string> logMsg) const {
+    [[nodiscard]] optional<TemplateCluster> LCSMatch(vector<TemplateCluster> cluster, vector<string> logMsg) {
 //        cout << "LCSMatch START" << endl;
 
         optional<TemplateCluster> res = nullopt;
@@ -194,7 +195,7 @@ public:
         return res;
     }
 
-    static optional<TemplateCluster> simpleLoopMatch(vector<TemplateCluster> cluster, vector<string> constLogMsg) {
+    optional<TemplateCluster> simpleLoopMatch(vector<TemplateCluster> cluster, vector<string> constLogMsg) {
 //        cout << "simpleLoopMatch START" << endl;
 
         for (TemplateCluster TemplateCluster : cluster) {
@@ -323,13 +324,35 @@ PYBIND11_MODULE(CPlusSpell, m) {
 //        py::arg("logCLust") = nullptr, py::arg("trie")=TrieNode());
 
     py::class_<TemplateCluster>(m, "TemplateCluster")
-            .def(py::init<vector<string> &, vector<int> &>())
+            .def(py::init<vector<string> &, vector<int> &>(),
+                py::arg("logTemplate"), py::arg("logIds"))
             .def_readwrite("logTemplate", &TemplateCluster::logTemplate)
             .def_readwrite("logIDL", &TemplateCluster::logIds);
     py::class_<TrieNode>(m, "TrieNode")
-            .def(py::init<string &, int &>());
+            .def(py::init<>())
+            .def(py::init<string &, int &>())
+            .def_readwrite("cluster", &TrieNode::cluster)
+            .def_readwrite("token", &TrieNode::token)
+            .def_readwrite("templateNo", &TrieNode::templateNo)
+            .def_readwrite("child", &TrieNode::child);
     py::class_<Parser>(m, "Parser")
+        .def(py::init<>())
         .def(py::init<vector<TemplateCluster> &, TrieNode &, float &>())
-        .def("parse", &Parser::parse);
+        .def("parse", &Parser::parse,
+            "A function which parses the 'Content' section of a log"
+            " generated from spellpy",
+            py::arg("content"))
+        .def("LCS", &Parser::LCS,
+                "Longest Common Subsequence between String Arrays",
+                py::arg("seq1"),py::arg("seq2"))
+        .def("LCSMatch", &Parser::LCSMatch,
+                "Tries to find a match for a logMsg in a List of TemplateCLuster",
+                py::arg("cluster"), py::arg("logMsg"))
+        .def("addSeqToPrefixTree", &Parser::addSeqToPrefixTree,
+                "Add Template to trie",
+                py::arg("prefixTreeRoot"), py::arg("newCluster"))
+        .def("getTemplate", &Parser::getTemplate,
+                "Generate Template from partial message obtained via LCS",
+                py::arg("lcs"));
 
 }

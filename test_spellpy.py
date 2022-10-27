@@ -3,7 +3,8 @@ import re
 import os
 import pandas as pd
 from pandas.testing import assert_frame_equal
-from spellpy.spell import LogParser, LCSObject, Node
+from spell import LogParser
+import CPlusSpell as cp
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FORMAT = '<Date> <Time> <Pid> <Level> <Component>: <Content>'
@@ -26,42 +27,16 @@ DF_MOCK = pd.DataFrame(mock)
 
 class TestLogParser(unittest.TestCase):
     def setUp(self):
-        self.parser = LogParser()
-
-    def test_generate_logformat_regex(self):
-        expected_header = ['Date', 'Time', 'Pid', 'Level', 'Component', 'Content']
-        expected_regex = re.compile(
-            '^(?P<Date>.*?) (?P<Time>.*?) (?P<Pid>.*?) (?P<Level>.*?) (?P<Component>.*?): (?P<Content>.*?)$'
-        )
-
-        header, regex = self.parser.generate_logformat_regex(LOG_FORMAT)
-        self.assertListEqual(header, expected_header)
-        self.assertCountEqual(header, expected_header)
-        self.assertEqual(regex, expected_regex)
-
-    def test_log_to_dataframe(self):
-        test_data_path = os.path.join(THIS_DIR, 'test_data.log')
-        header, regex = self.parser.generate_logformat_regex(LOG_FORMAT)
-        df_log = self.parser.log_to_dataframe(
-            test_data_path, regex, header, LOG_FORMAT
-        )
-        assert_frame_equal(df_log, DF_MOCK)
-
-    def test_load_data(self):
-        self.parser.logformat = LOG_FORMAT
-        self.parser.path = THIS_DIR
-        self.parser.logname = 'test_data.log'
-        self.parser.load_data()
-        assert_frame_equal(self.parser.df_log, DF_MOCK)
+        self.cpParser = cp.Parser()
 
     def test_addSeqToPrefixTree(self):
         logmessageL = ['Receiving', 'block', 'blk_-1608999687919862906', 'src', '/10.250.19.102', '54106', 'dest', '/10.250.19.102', '50010']
         logID = 0
 
-        rootNode = Node()
-        newCluster = LCSObject(logTemplate=logmessageL, logIDL=[logID])
+        rootNode = cp.TrieNode()
+        newCluster = cp.TemplateCluster(logmessageL, [logID])
 
-        self.parser.addSeqToPrefixTree(rootNode, newCluster)
+        self.cpParser.addSeqToPrefixTree(rootNode, newCluster)
         res = helper(rootNode)
         self.assertEqual(res, logmessageL)
 
@@ -70,7 +45,7 @@ class TestLogParser(unittest.TestCase):
         seq2 = ['Receiving', 'block', 'blk_-1608999687919862906', 'src', '/10.250.19.102', '54106', 'dest', '/10.250.19.102', '50010']
         expected_lcs = ['Receiving', 'block', 'blk_-1608999687919862906', 'src', 'dest', '50010']
 
-        lcs = self.parser.LCS(seq1, seq2)
+        lcs = self.cpParser.LCS(seq1, seq2)
         self.assertListEqual(lcs, expected_lcs)
 
     def test_LCSMatch(self):
@@ -78,12 +53,12 @@ class TestLogParser(unittest.TestCase):
         seq2 = ['Just', 'A', 'Test']
         logmessageL = ['Receiving', 'block', 'blk_-1608999687919862906', 'src', '/10.250.19.102', '54106', 'dest', '/10.250.19.102', '50010']
         logID = 0
-        newCluster = LCSObject(logTemplate=logmessageL, logIDL=[logID])
+        newCluster = cp.TemplateCluster(logmessageL, [logID])
 
-        retLogClust = self.parser.LCSMatch([newCluster], seq1)
+        retLogClust = self.cpParser.LCSMatch([newCluster], seq1)
         self.assertListEqual(retLogClust.logTemplate, newCluster.logTemplate)
 
-        ret = self.parser.LCSMatch([newCluster], seq2)
+        ret = self.cpParser.LCSMatch([newCluster], seq2)
         self.assertEqual(ret, None)
 
     def test_getTemplate(self):
@@ -96,13 +71,12 @@ class TestLogParser(unittest.TestCase):
 
 
 def helper(rootNode):
-    if rootNode.childD == dict():
+    if rootNode.child == dict():
         return []
-
     res = []
-    for k in rootNode.childD.keys():
+    for k in rootNode.child.keys():
         res.append(k)
-        res += helper(rootNode.childD[k])
+        res += helper(rootNode.child[k])
     return res
 
 
