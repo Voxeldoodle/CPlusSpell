@@ -113,6 +113,7 @@ public:
                 parentn->child[tok].templateNo++;
             else
                 parentn->child.insert({tok,TrieNode(tok, 1)});
+//                parentn->child[tok] = TrieNode(tok, 1);
             parentn = &parentn->child[tok];
         }
         if (!parentn->cluster.has_value())
@@ -192,16 +193,16 @@ public:
     optional<TemplateCluster> simpleLoopMatch(vector<TemplateCluster> cluster, vector<string> constLogMsg) {
 //        cout << "simpleLoopMatch START" << endl;
 
-        for (TemplateCluster TemplateCluster : cluster) {
-            if (TemplateCluster.logTemplate.size() < .5 * constLogMsg.size())
+        for (TemplateCluster templateCluster : cluster) {
+            if (templateCluster.logTemplate.size() < .5 * constLogMsg.size())
                 continue;
             set<string> tokenSet;
             for (string w : constLogMsg) {
                 tokenSet.insert(w);
             }
-            if (all_of(constLogMsg.cbegin(), constLogMsg.cend(),
-                       [&tokenSet](string s) { return s == "<*>" || tokenSet.count(s); }))
-                return TemplateCluster;
+            if (all_of(templateCluster.logTemplate.cbegin(), templateCluster.logTemplate.cend(),
+                       [&tokenSet](const string& tok) { return tok == "<*>" || tokenSet.count(tok); }))
+                return templateCluster;
         }
         return nullopt;
     }
@@ -247,8 +248,7 @@ public:
                     if (!matchCluster.has_value()){
 //                        cout << "Inner FALSE" << endl;
 
-                        vector<int> ids;
-                        ids.push_back(logID);
+                        vector<int> ids = {logID};
                         auto newCluster = TemplateCluster(tokMsg, ids);
                         logClust.push_back(newCluster);
                         addSeqToPrefixTree(trieRoot, newCluster);
@@ -290,7 +290,7 @@ int main()
     vector<string> lines = {"PacketResponder 1 for block blk_38865049064139660 terminating",
                             "PacketResponder 0 for block blk_-6952295868487656571 terminating",
                             "10.251.73.220:50010 is added to blk_7128370237687728475 size 67108864"};
-    auto p = Parser();
+    auto p = Parser(.7);
     auto out =  p.parse(lines);
 
     cout << "OUT" << endl;

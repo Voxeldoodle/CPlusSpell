@@ -251,8 +251,8 @@ class LogParser(pickle.Unpickler):
                 logging.error('Length of log string is too long')
                 logging.error(line)
                 continue
-            t = Timer(1.0, self._log_to_dataframe_handler)
-            t.start()
+            # t = Timer(1.0, self._log_to_dataframe_handler)
+            # t.start()
             line = re.sub(r'[^\x00-\x7F]+', '<NASCII>', line)
             try:
                 match = self.regex.search(line.strip())
@@ -264,7 +264,7 @@ class LogParser(pickle.Unpickler):
             except Exception as e:
                 _ = e
                 pass
-            t.cancel()
+            # t.cancel()
         df_log = pd.DataFrame(log_messages, columns=self.headers)
         df_log.insert(0, 'LineId', None)
         df_log['LineId'] = [i + 1 for i in range(linecount)]

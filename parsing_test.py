@@ -1,24 +1,14 @@
-# import CSpell
-# import pandas as pd
-
-# df = pd.read_csv("HDFS_2k.csv")
-# # CSpell.parse(df['Content'].tolist())
-# CSpell.parse(["Abc","def"])
-# obj = CSpell.TemplateCluster(["AC", "jis"], [1,2,3,4])
-# CSpell.testCluster(obj)
-#
-# node = CSpell.TrieNode("piippo", 5)
-# print(node)
-
 import CPlusSpell as cp
 import pandas as pd
 import spell
+import time
+import web_pdb;
 import numpy as np
 
 trie = cp.TrieNode()
 parser = cp.Parser([], trie, .7)
 
-with open("HDFS_2k.txt", 'r') as f:
+with open("HDFS_2k_Content", 'r') as f:
     lines = f.readlines()
 
 out = parser.parse(lines)
@@ -39,6 +29,13 @@ elif log == 'HDFS':
 spellp = spell.LogParser(indir=base_dir+input_dir, outdir=output_dir,
                    log_format=log_format, tau=tau, logmain=log)
 
+lines = [l.strip() for l in lines]
 spellp.df_log = pd.DataFrame(lines, columns=["Content"])
 spellp.logname = "HDFS"
+spellp.lastestLineId = -1
+# web_pdb.set_trace()
+t0 = time.time()
 spellp.outputResult(out)
+t1 = time.time()
+spellp.df_log.to_csv("cspell_output.csv", index=False)
+print(f"Time taken: {t1 - t0}")
