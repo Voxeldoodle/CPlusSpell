@@ -3,4 +3,4 @@ project(CSpell)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(wrapper wrapper.cpp)
+add_executable(wrapper CSpell.cpp)

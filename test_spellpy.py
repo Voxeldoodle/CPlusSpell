@@ -1,9 +1,6 @@
 import unittest
-import re
 import os
 import pandas as pd
-from pandas.testing import assert_frame_equal
-from spell import LogParser
 import CPlusSpell as cp
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))

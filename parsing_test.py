@@ -15,7 +15,7 @@ import pandas as pd
 import spell
 import numpy as np
 
-trie = cp.TrieNode("",0)
+trie = cp.TrieNode()
 parser = cp.Parser([], trie, .7)
 
 with open("HDFS_2k.txt", 'r') as f:
@@ -39,6 +39,6 @@ elif log == 'HDFS':
 spellp = spell.LogParser(indir=base_dir+input_dir, outdir=output_dir,
                    log_format=log_format, tau=tau, logmain=log)
 
-spellp.df_log = pd.DataFrame(np.random.randint(0,100,size=(2000, 1)), columns=list('A'))
+spellp.df_log = pd.DataFrame(lines, columns=["Content"])
 spellp.logname = "HDFS"
 spellp.outputResult(out)
