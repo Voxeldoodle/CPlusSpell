@@ -54,13 +54,13 @@ public:
     TrieNode trieRoot;
     const float tau;
 
-    Parser() : tau(.7) {}
+    Parser() : tau(.5) {}
     Parser(float tau)
             : tau(tau){}
     Parser(vector<TemplateCluster> logClust, TrieNode trieRoot, float tau)
             : logClust(logClust), trieRoot(trieRoot), tau(tau){}
 
-    vector<string> getTemplate(vector<string> lcs) {
+    vector<string> getTemplate(vector<string> lcs, vector<string> seq) {
 //        cout << "getTemplate START" << endl;
 
         vector<string> res;
@@ -69,7 +69,7 @@ public:
 
         reverse(lcs.begin(), lcs.end());
         int i = 0;
-        for (const string& tok : lcs) {
+        for (const string& tok : seq) {
             i++;
             if (tok == lcs[lcs.size() - 1]){
                 res.push_back(tok);
@@ -79,7 +79,7 @@ public:
             if (lcs.empty())
                 break;
         }
-        if (i < lcs.size())
+        if (i < seq.size())
             res.emplace_back("<*>");
         return res;
     }
@@ -124,18 +124,16 @@ public:
     }
 
     vector<string> LCS(vector<string> seq1, vector<string> seq2) {
+
         vector<vector<int>> lengths(seq1.size()+1,vector<int>(seq2.size()+1));
-        int i = 0;
-        int j = 0;
-        for (const auto &itemI: lengths) {
-            for (const auto &itemJ: itemI) {
+        for (int i = 0; i < seq1.size() ; i++){
+            for (int j = 0; j < seq2.size(); j++) {
+//                printf("i: %d j:%d\n", i, j);
                 if (seq1[i] == seq2[j])
                     lengths[i+1][j+1] = lengths[i][j]+1;
                 else
                     lengths[i+1][j+1] = max(lengths[i+1][j], lengths[i][j+1]);
-                j++;
             }
-            i++;
         }
         vector<string> result;
         auto lenOfSeq1= seq1.size();
@@ -146,7 +144,7 @@ public:
             else if (lengths[lenOfSeq1][lenOfSeq2] == lengths[lenOfSeq1][lenOfSeq2-1])
                 lenOfSeq2--;
             else{
-                assert(seq1[lenOfSeq1-1] != seq2[lenOfSeq2-1] && "Error in LCS");
+                assert(seq1[lenOfSeq1-1] == seq2[lenOfSeq2-1] && "Error in LCS");
                 result.insert(result.begin(), seq1[lenOfSeq1-1]);
                 lenOfSeq1--;
                 lenOfSeq2--;
@@ -164,13 +162,13 @@ public:
             msgSet.insert(w);
         }
         auto msgLen = logMsg.size();
-        auto maxLen = -1;
+        int maxLen = -1;
         optional<TemplateCluster> maxLCS = nullopt;
 
         for (TemplateCluster templateCluster : cluster) {
             set<string> tempSet;
-            for (const string& w : templateCluster.logTemplate) {
-                msgSet.insert(w);
+            for (auto w : templateCluster.logTemplate) {
+                tempSet.insert(w);
             }
             set<string> intersect;
             set_intersection(msgSet.begin(), msgSet.end(), tempSet.begin(), tempSet.end(),
@@ -178,7 +176,7 @@ public:
             if (intersect.size() < .5 * msgLen)
                 continue;
             auto lcs = LCS(logMsg, templateCluster.logTemplate);
-            auto lenLcs = lcs.size();
+            int lenLcs = lcs.size();
             if (lenLcs > maxLen ||
                 (lenLcs == maxLen &&
                  templateCluster.logTemplate.size() < maxLCS.value().logTemplate.size())){
@@ -268,7 +266,8 @@ public:
                         for (const auto &piece : matchCluster.value().logTemplate) s += piece;
 
 
-                        auto newTemplate = getTemplate(LCS(tokMsg, matchCluster.value().logTemplate));
+                        auto newTemplate = getTemplate(LCS(tokMsg, matchCluster.value().logTemplate),
+                                                       matchCluster.value().logTemplate);
                         if (newTemplate != matchCluster.value().logTemplate){
                             removeSeqFromPrefixTree(trieRoot, matchCluster.value());
                         }
@@ -294,34 +293,8 @@ public:
     }
 };
 
-//void testCluster(const TemplateCluster cls){
-//    cout << cls.logTemplate[1] << endl;
-//}
-//
-//void parse(const vector<string> s, float tau=.7){
-//    vector<TemplateCluster> vect;
-//    parse(s, vect, TrieNode(), tau);
-//}
-
 PYBIND11_MODULE(CPlusSpell, m) {
     m.doc() = "Log parsing module spellpy adapted into c++"; // Optional module docstring
-//    m.def("parse", py::overload_cast<vector<string>,
-//            vector<TemplateCluster>,
-//            TrieNode,
-//            float>(&parse),
-//            "A function which parses the 'Content' section of a log generated from spellpy",
-//            py::arg("content"), py::arg("logCLust"), py::arg("trie"), py::arg("tau")=.7);
-//    m.def("parse", py::overload_cast<vector<string>, float>(&parse),
-//            "A function which parses the 'Content' section of a log generated from spellpy",
-//            py::arg("content"), py::arg("tau")=.7);
-
-//    Tentativo di valori default con pybind
-//    m.def("parse", py::overload_cast<vector<string>,
-//        vector<TemplateCluster>,
-//        TrieNode>(&parse),
-//        "A function which parses the 'Content' section of a log generated from spellpy",
-//        py::arg("content"),
-//        py::arg("logCLust") = nullptr, py::arg("trie")=TrieNode());
 
     py::class_<TemplateCluster>(m, "TemplateCluster")
             .def(py::init<vector<string> &, vector<int> &>(),
@@ -353,6 +326,6 @@ PYBIND11_MODULE(CPlusSpell, m) {
                 py::arg("prefixTreeRoot"), py::arg("newCluster"))
         .def("getTemplate", &Parser::getTemplate,
                 "Generate Template from partial message obtained via LCS",
-                py::arg("lcs"));
+                py::arg("lcs"), py::arg("seq"));
 
 }
