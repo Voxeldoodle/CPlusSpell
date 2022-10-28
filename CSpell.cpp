@@ -220,9 +220,10 @@ public:
                     vector<string> tmp =  child.cluster.value().logTemplate;
                     vector<string> constLM;
                     copy_if (tmp.begin(), tmp.end(),
-                             back_inserter(constLogMsg),
+                             back_inserter(constLM),
                              [](string s){return s != "<*>";});
-                    if (constLM.size() >= tau * (constLogMsg[i]).size())
+                    if (constLM.size() >= tau * constLogMsg.size())
+//                        return child.cluster.has_value() ? child.cluster : nullopt;
                         return child.cluster;
                 }else
                     prefixTreeMatch(child, constLogMsg, i+1);
@@ -281,15 +282,15 @@ public:
                 }
             }
             i++;
-            if (i % 10000 == 0 || (i > 20000 && i%100 == 0) || i == content.size() ){
+            if (i % 10000 == 0 || (i > 20000 && i%5000 == 0) || i == content.size() ){
                 auto now = chrono::system_clock::now();
                 auto time = chrono::system_clock::to_time_t(now);
 //                chrono::duration<double> elapsed_seconds = end-start;
 //                elapsed_seconds.count()
                 printf("%s Processed %2.2lu%% of log lines.\n",ctime(&time), 100*i/content.size());
             }
-            if (i > 24660)
-                cout << "BREAk" << endl;
+//            if (i > 24660)
+//                cout << "BREAk" << endl;
         }
         return logClust;
     }
