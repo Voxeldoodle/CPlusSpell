@@ -21,7 +21,10 @@ PYBIND11_MODULE(CPlusSpell, m) {
             .def_readwrite("child", &TrieNode::child);
     py::class_<Parser>(m, "Parser")
         .def(py::init<>())
-        .def(py::init<vector<TemplateCluster> &, TrieNode &, float &>())
+        .def(py::init<float &>(),
+            py::arg("tau"))
+        .def(py::init<vector<TemplateCluster> &, TrieNode &, float &, int &>(),
+            py::arg("logCluster"),py::arg("prefixTree"),py::arg("tau"),py::arg("lastLine"))
         .def("parse", &Parser::parse,
             "A function which parses the 'Content' section of a log"
             " generated from spellpy",

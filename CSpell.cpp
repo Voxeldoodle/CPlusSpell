@@ -6,6 +6,9 @@
 #include <optional>
 #include <set>
 #include <cassert>
+#include <chrono>
+#include <ctime>
+#include <fstream>
 
 using namespace std;
 
@@ -49,12 +52,13 @@ public:
     vector<TemplateCluster> logClust;
     TrieNode trieRoot;
     const float tau;
+    int lastLine = 0;
 
     Parser() : tau(.5) {}
     Parser(float tau)
             : tau(tau){}
-    Parser(vector<TemplateCluster> logClust, TrieNode trieRoot, float tau)
-            : logClust(logClust), trieRoot(trieRoot), tau(tau){}
+    Parser(vector<TemplateCluster> logClust, TrieNode trieRoot, float tau, int lastLine)
+            : logClust(logClust), trieRoot(trieRoot), tau(tau), lastLine(lastLine){}
 
     vector<string> getTemplate(vector<string> lcs, vector<string> seq) {
 //        cout << "getTemplate START" << endl;
@@ -233,7 +237,7 @@ public:
         for (const string& logMsg : content){
 //            cout << "Loop: " << i << " Msg: "<< logMsg << endl;
 
-            int logID = i;
+            int logID = i + lastLine;
             vector<string> tokMsg = split(logMsg, "[\\s=:,]");
             vector<string> constLogMsg;
             copy_if (tokMsg.begin(), tokMsg.end(),
@@ -277,9 +281,15 @@ public:
                 }
             }
             i++;
-            if (i % 10000 == 0 || i == content.size() ){
-                printf("Processed %2.2lu%% of log lines.\n", 100*i/content.size());
+            if (i % 10000 == 0 || (i > 20000 && i%100 == 0) || i == content.size() ){
+                auto now = chrono::system_clock::now();
+                auto time = chrono::system_clock::to_time_t(now);
+//                chrono::duration<double> elapsed_seconds = end-start;
+//                elapsed_seconds.count()
+                printf("%s Processed %2.2lu%% of log lines.\n",ctime(&time), 100*i/content.size());
             }
+            if (i > 24660)
+                cout << "BREAk" << endl;
         }
         return logClust;
     }
@@ -287,9 +297,20 @@ public:
 
 int main()
 {
-    vector<string> lines = {"PacketResponder 1 for block blk_38865049064139660 terminating",
-                            "PacketResponder 0 for block blk_-6952295868487656571 terminating",
-                            "10.251.73.220:50010 is added to blk_7128370237687728475 size 67108864"};
+//    vector<string> lines = {"PacketResponder 1 for block blk_38865049064139660 terminating",
+//                            "PacketResponder 0 for block blk_-6952295868487656571 terminating",
+//                            "10.251.73.220:50010 is added to blk_7128370237687728475 size 67108864"};
+    string line;
+    vector<string> lines;
+    ifstream myfile("../HDFS100k");
+    if(!myfile) //Always test the file open.
+    {
+        std::cout<<"Error opening output file"<< std::endl;
+        return -1;
+    }
+    while (getline(myfile, line))
+        lines.push_back(line);
+
     auto p = Parser(.7);
     auto out =  p.parse(lines);
 

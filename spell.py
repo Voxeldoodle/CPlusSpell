@@ -79,16 +79,12 @@ class LogParser(pickle.Unpickler):
                 self.rootNode = CustomUnpickler(f).load()
             with open(logCluLPath, 'rb') as f:
                 self.logCluL = CustomUnpickler(f).load()
-            self.lastestLineId = 0
             self.setLatestLineId()
             logging.info(f'Load objects done, lastestLineId: {self.lastestLineId}')
         else:
             self.rootNode = Node()
             self.logCluL = []
             self.lastestLineId = 0
-
-    def setDataframe(self, df):
-        self.df_log = df
 
     def setLatestLineId(self):
         for logclust in self.logCluL:
@@ -346,6 +342,8 @@ class LogParser(pickle.Unpickler):
                 # print('Processed {0:.1f}% of log lines.'.format(count * 100.0 / len(self.df_log)))
                 t0 = t1
 
+        logging.info('Parsing done. [Time taken: {!s}]'.format(datetime.now() - starttime))
+
         if not os.path.exists(self.savePath):
             os.makedirs(self.savePath)
         if persistence:
@@ -364,7 +362,7 @@ class LogParser(pickle.Unpickler):
             pickle.dump(self.logCluL, output, pickle.HIGHEST_PROTOCOL)
         logging.info('Store objects done.')
 
-        logging.info('Parsing done. [Time taken: {!s}]'.format(datetime.now() - starttime))
+        logging.info('Parsing+Saving. [Time taken: {!s}]'.format(datetime.now() - starttime))
 
         return self.df_log
 
@@ -435,7 +433,7 @@ class LogParser(pickle.Unpickler):
         main_structured_path = os.path.join(self.savePath, self.logmain+'_main_structured.csv')
         df_log_main_structured = pd.read_csv(main_structured_path)
         lastestLineId = df_log_main_structured['LineId'].max()
-        logging.info(f'lastestLindId: {lastestLineId}')
+        logging.info(f'lastestLineId: {lastestLineId}')
 
         templates = [0] * self.df_log.shape[0]
         ids = [0] * self.df_log.shape[0]
