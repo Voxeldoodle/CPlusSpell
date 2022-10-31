@@ -231,7 +231,7 @@ public:
 //                        return child.cluster.has_value() ? child.cluster : nullopt;
                         return &(child.cluster.value());
                 }else
-                    prefixTreeMatch(child, constLogMsg, i+1);
+                    return prefixTreeMatch(child, constLogMsg, i+1);
             }
         }
         return nullopt;
@@ -239,7 +239,7 @@ public:
 
     vector<TemplateCluster> parse(const vector<string> content){
 //        cout << "parse START" << endl;
-        int i = 0;
+        int i = 1;
         for (const string& logMsg : content){
 //            cout << "Loop: " << i << " Msg: "<< logMsg << endl;
 
@@ -278,7 +278,7 @@ public:
             if (matchCluster.has_value()){
 //                cout << "Outer TRUE" << endl;
 
-                for (TemplateCluster logCluster : logClust) {
+                for (TemplateCluster& logCluster : logClust) {
                     if ((*matchCluster.value()).logTemplate == logCluster.logTemplate) {
                         logCluster.logIds.push_back(logID);
                         break;

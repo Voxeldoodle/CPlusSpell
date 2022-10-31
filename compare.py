@@ -2,6 +2,7 @@ import pandas as pd
 
 import spell
 # import cspell as cp
+import os
 
 # with open("HDFS_2k", 'r') as f:
 #     lines = f.readlines()
@@ -19,6 +20,9 @@ if log == 'BGL':
 elif log == 'HDFS':
     log_format = '<Date> <Time> <Pid> <Level> <Component>: <Content>'
     tau = 0.7
+
+if not os.path.exists("./DFOutput"):
+    os.makedirs("DFOutput")
 
 if test == 'py':
     parser = spell.LogParser(indir=base_dir, outdir="HDFSpy",
