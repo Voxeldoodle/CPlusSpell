@@ -160,19 +160,18 @@ public:
         return result;
     }
 
-    [[nodiscard]] optional<TemplateCluster> LCSMatch(vector<TemplateCluster> cluster, vector<string> logMsg) {
+    optional<TemplateCluster*> LCSMatch(vector<TemplateCluster> &cluster, vector<string> logMsg) {
 //        cout << "LCSMatch START" << endl;
-
-        optional<TemplateCluster> res = nullopt;
+        optional<TemplateCluster *> res;
         set<string> msgSet;
         for (const string& w : logMsg) {
             msgSet.insert(w);
         }
         double msgLen = logMsg.size();
         int maxLen = -1;
-        optional<TemplateCluster> maxLCS = nullopt;
+        optional<TemplateCluster *> maxLCS;
 
-        for (const TemplateCluster& templateCluster : cluster) {
+        for (TemplateCluster& templateCluster : cluster) {
             set<string> tempSet;
             for (auto w : templateCluster.logTemplate) {
                 tempSet.insert(w);
@@ -186,9 +185,9 @@ public:
             int lenLcs = lcs.size();
             if (lenLcs > maxLen ||
                 (lenLcs == maxLen &&
-                 templateCluster.logTemplate.size() < maxLCS.value().logTemplate.size())){
+                 templateCluster.logTemplate.size() < (*maxLCS.value()).logTemplate.size())){
                 maxLen = lenLcs;
-                maxLCS = templateCluster;
+                maxLCS = optional(&templateCluster);
             }
         }
 
@@ -200,7 +199,7 @@ public:
         return res;
     }
 
-    optional<TemplateCluster> simpleLoopMatch(vector<TemplateCluster> cluster, vector<string> constLogMsg) {
+    optional<TemplateCluster*> simpleLoopMatch(vector<TemplateCluster> &cluster, vector<string> constLogMsg) {
 //        cout << "simpleLoopMatch START" << endl;
 
         for (TemplateCluster templateCluster : cluster) {
@@ -212,12 +211,12 @@ public:
             }
             if (all_of(templateCluster.logTemplate.cbegin(), templateCluster.logTemplate.cend(),
                        [&tokenSet](const string& tok) { return tok == "<*>" || tokenSet.count(tok); }))
-                return templateCluster;
+                return &templateCluster;
         }
         return nullopt;
     }
 
-    optional<TemplateCluster> prefixTreeMatch(TrieNode prefixTree, vector<string> constLogMsg, int start) {
+    optional<TemplateCluster*> prefixTreeMatch(TrieNode &prefixTree, vector<string> constLogMsg, int start) {
 //        cout << "prefixTreeMatch START" << endl;
         for (int i = start; i < constLogMsg.size(); i++) {
             if (prefixTree.child.count(constLogMsg[i])){
@@ -230,7 +229,7 @@ public:
                              [](string s){return s != "<*>";});
                     if (constLM.size() >= tau * constLogMsg.size())
 //                        return child.cluster.has_value() ? child.cluster : nullopt;
-                        return child.cluster;
+                        return &(child.cluster.value());
                 }else
                     prefixTreeMatch(child, constLogMsg, i+1);
             }
@@ -251,11 +250,12 @@ public:
                      back_inserter(constLogMsg),
                      [](string s){return s != "<*>";});
 
-            optional<TemplateCluster> matchCluster = prefixTreeMatch(trieRoot, constLogMsg, 0);
+            optional<TemplateCluster *>  matchCluster = prefixTreeMatch(trieRoot, constLogMsg, 0);
             if (!matchCluster.has_value()){
                 matchCluster = simpleLoopMatch(logClust, constLogMsg);
                 if (!matchCluster.has_value()){
                     matchCluster = LCSMatch(logClust, tokMsg);
+//                    matchCluster = LCSMatch(logClust, tokMsg);
                     if (!matchCluster.has_value()){
 //                        cout << "Inner FALSE" << endl;
 
@@ -265,12 +265,12 @@ public:
                         addSeqToPrefixTree(trieRoot, newCluster);
                     }else{
 //                        cout << "Inner TRUE" << endl;
-                        auto matchClustTemp = matchCluster.value().logTemplate;
+                        auto matchClustTemp = (*matchCluster.value()).logTemplate;
                         auto newTemplate = getTemplate(LCS(tokMsg, matchClustTemp), matchClustTemp);
                         if (newTemplate != matchClustTemp){
-                            removeSeqFromPrefixTree(trieRoot, matchCluster.value());
-                            matchCluster.value().logTemplate = newTemplate;
-                            addSeqToPrefixTree(trieRoot, matchCluster.value());
+                            removeSeqFromPrefixTree(trieRoot, *matchCluster.value());
+                            (*matchCluster.value()).logTemplate = newTemplate;
+                            addSeqToPrefixTree(trieRoot, *matchCluster.value());
                         }
                     }
                 }
@@ -279,7 +279,7 @@ public:
 //                cout << "Outer TRUE" << endl;
 
                 for (TemplateCluster logCluster : logClust) {
-                    if (matchCluster.value().logTemplate == logCluster.logTemplate) {
+                    if ((*matchCluster.value()).logTemplate == logCluster.logTemplate) {
                         logCluster.logIds.push_back(logID);
                         break;
                     }

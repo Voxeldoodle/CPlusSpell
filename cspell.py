@@ -220,7 +220,7 @@ class LogParser:
                 trimmed = self.df_log[self.df_log['LineId'] > last_main_line_id]
                 df_log_main_structured = pd.concat([df_log_main_structured, trimmed])
 
-                df_log_main_structured.to_csv(os.path.join(self.save_path, self.main_log_name + '_structured.csv'),
+                df_log_main_structured.to_csv(os.path.join(self.save_path, self.main_log_name + '_main_structured.csv'),
                                               index=False)
                 self.df_event.to_csv(os.path.join(self.save_path, self.main_log_name + '_main_templates.csv'),
                                      index=False)

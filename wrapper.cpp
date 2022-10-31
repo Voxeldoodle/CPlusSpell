@@ -69,7 +69,7 @@ PYBIND11_MODULE(CPlusSpell, m) {
         .def("LCS", &Parser::LCS,
                 "Longest Common Subsequence between String Arrays",
                 py::arg("seq1"),py::arg("seq2"))
-        .def("LCSMatch", &Parser::LCSMatch,
+        .def("LCSMatch", &Parser::LCSMatch,py::return_value_policy::copy,
                 "Tries to find a match for a logMsg in a List of TemplateCLuster",
                 py::arg("cluster"), py::arg("logMsg"))
         .def("addSeqToPrefixTree", &Parser::addSeqToPrefixTree,
