@@ -44,7 +44,13 @@ public:
 
     TrieNode(){}
     TrieNode(string token, int templateNo)
-            : token(token), templateNo(templateNo){}
+            : token(std::move(token)), templateNo(templateNo){}
+
+    TrieNode(const optional<TemplateCluster> &cluster,
+             string token,
+             int templateNo,
+             const map<string, TrieNode> &child) :
+             cluster(cluster), token(std::move(token)), templateNo(templateNo), child(child) {}
 };
 
 class Parser {
@@ -162,11 +168,11 @@ public:
         for (const string& w : logMsg) {
             msgSet.insert(w);
         }
-        auto msgLen = logMsg.size();
+        double msgLen = logMsg.size();
         int maxLen = -1;
         optional<TemplateCluster> maxLCS = nullopt;
 
-        for (TemplateCluster templateCluster : cluster) {
+        for (const TemplateCluster& templateCluster : cluster) {
             set<string> tempSet;
             for (auto w : templateCluster.logTemplate) {
                 tempSet.insert(w);
@@ -259,14 +265,12 @@ public:
                         addSeqToPrefixTree(trieRoot, newCluster);
                     }else{
 //                        cout << "Inner TRUE" << endl;
-                        std::string s;
-                        for (const auto &piece : matchCluster.value().logTemplate) s += piece;
-
-
-                        auto newTemplate = getTemplate(LCS(tokMsg, matchCluster.value().logTemplate),
-                                                       matchCluster.value().logTemplate);
-                        if (newTemplate != matchCluster.value().logTemplate){
+                        auto matchClustTemp = matchCluster.value().logTemplate;
+                        auto newTemplate = getTemplate(LCS(tokMsg, matchClustTemp), matchClustTemp);
+                        if (newTemplate != matchClustTemp){
                             removeSeqFromPrefixTree(trieRoot, matchCluster.value());
+                            matchCluster.value().logTemplate = newTemplate;
+                            addSeqToPrefixTree(trieRoot, matchCluster.value());
                         }
                     }
                 }
@@ -282,15 +286,13 @@ public:
                 }
             }
             i++;
-            if (i % 10000 == 0 || (i > 20000 && i%5000 == 0) || i == content.size() ){
+            if (i % 10000 == 0 || i == content.size() ){
                 auto now = chrono::system_clock::now();
                 auto time = chrono::system_clock::to_time_t(now);
 //                chrono::duration<double> elapsed_seconds = end-start;
 //                elapsed_seconds.count()
                 printf("%s Processed %2.2lu%% of log lines.\n",ctime(&time), 100*i/content.size());
             }
-//            if (i > 24660)
-//                cout << "BREAk" << endl;
         }
         return logClust;
     }
@@ -303,7 +305,8 @@ int main()
 //                            "10.251.73.220:50010 is added to blk_7128370237687728475 size 67108864"};
     string line;
     vector<string> lines;
-    ifstream myfile("../HDFS100k");
+//    ifstream myfile("../HDFS100k");
+    ifstream myfile("../HDFS_2k_Content");
     if(!myfile) //Always test the file open.
     {
         std::cout<<"Error opening output file"<< std::endl;
