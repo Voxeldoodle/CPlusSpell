@@ -247,22 +247,12 @@ class LogParser:
             timer.cancel()
 
     @staticmethod
-    def _parameter_handler(signum, frame):
+    def _parameter_handler(*args):
         logging.error("_get_parameter_list function is hangs!")
         raise Exception("TIME OUT!")
 
     @staticmethod
-    def _parameter_handler():
-        logging.error("_get_parameter_list function is hangs!")
-        raise Exception("TIME OUT!")
-
-    @staticmethod
-    def _log_to_dataframe_handler():
-        logging.error('log_to_dataframe function is hangs')
-        raise Exception("TIME OUT!")
-
-    @staticmethod
-    def _log_to_dataframe_handler(signum, frame):
+    def _log_to_dataframe_handler(*args):
         logging.error('log_to_dataframe function is hangs')
         raise Exception("TIME OUT!")
 

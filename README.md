@@ -1,4 +1,4 @@
-# CPlusSPell
+# CPlusSpell
 Spell implementation in C++
 
 # Description

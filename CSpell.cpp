@@ -249,6 +249,14 @@ public:
                      back_inserter(constLogMsg),
                      [](string s){return s != "<*>";});
 
+            /*
+             * TODO: change prefixTreeMatch so that it returns a copy of the template
+             * instead of the reference to the leaf's template.
+             * This change shouldn't break anything since a template update should require the
+             * branch to be removed and recreated with the new template.
+             * This change would help in case of parallelization since it wouldn't require
+             * strict access regulation.
+             */
             optional<TemplateCluster *>  matchCluster = prefixTreeMatch(trieRoot, constLogMsg, 0);
             if (!matchCluster.has_value()){
                 matchCluster = simpleLoopMatch(logClust, constLogMsg);
