@@ -20,7 +20,8 @@ vector<string> split(string s, string delimiter){
                                rgx,-1);
     sregex_token_iterator end;
     for ( ; iter != end; ++iter){
-        res.push_back(*iter);
+        if (*iter != "")
+            res.push_back(*iter);
     }
 
     return res;
