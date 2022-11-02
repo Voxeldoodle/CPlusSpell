@@ -225,8 +225,8 @@ class LogParser:
                 self.df_event.to_csv(os.path.join(self.save_path, self.main_log_name + '_main_templates.csv'),
                                      index=False)
             else:
-                self.df_log.to_csv(os.path.join(self.save_path, self.main_log_name + '_structured.csv'), index=False)
-                self.df_event.to_csv(os.path.join(self.save_path, self.main_log_name + '_templates.csv'), index=False)
+                self.df_log.to_csv(os.path.join(self.save_path, self.main_log_name + '_main_structured.csv'), index=False)
+                self.df_event.to_csv(os.path.join(self.save_path, self.main_log_name + '_main_templates.csv'), index=False)
 
         self.df_log.to_csv(os.path.join(self.save_path, self.log_name + '_structured.csv'), index=False)
         self.df_event.to_csv(os.path.join(self.save_path, self.log_name + '_templates.csv'), index=False)

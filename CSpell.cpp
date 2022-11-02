@@ -90,20 +90,20 @@ public:
         return res;
     }
 
-    void removeSeqFromPrefixTree(TrieNode prefixTreeRoot, TemplateCluster newCluster) {
-        auto parentn = prefixTreeRoot;
+    void removeSeqFromPrefixTree(TrieNode& prefixTreeRoot, TemplateCluster cluster) {
+        auto parentn = &prefixTreeRoot;
         vector<string> seq;
-        copy_if (newCluster.logTemplate.begin(), newCluster.logTemplate.end(),
+        copy_if (cluster.logTemplate.begin(), cluster.logTemplate.end(),
                  back_inserter(seq),
                  [](const string& s){return s != "<*>";});
         for (const string& tok : seq) {
-            if (parentn.child.count(tok)){
-                auto matched = parentn.child[tok];
-                if (matched.templateNo == 1){
-                    parentn.child.erase(tok);
+            if ((*parentn).child.count(tok)){
+                auto matched = &(*parentn).child[tok];
+                if ((*matched).templateNo == 1){
+                    (*parentn).child.erase(tok);
                     break;
                 }else {
-                    matched.templateNo--;
+                    (*matched).templateNo--;
                     parentn = matched;
                 }
             }
@@ -220,18 +220,18 @@ public:
 //        cout << "prefixTreeMatch START" << endl;
         for (int i = start; i < constLogMsg.size(); i++) {
             if (prefixTree.child.count(constLogMsg[i])){
-                TrieNode child = prefixTree.child.at(constLogMsg[i]);
-                if (child.cluster.has_value()){
-                    vector<string> tmp =  child.cluster.value().logTemplate;
+                TrieNode *child = &(prefixTree.child.at(constLogMsg[i]));
+                if ((*child).cluster.has_value()){
+                    vector<string> tmp =  (*child).cluster.value().logTemplate;
                     vector<string> constLM;
                     copy_if (tmp.begin(), tmp.end(),
                              back_inserter(constLM),
                              [](string s){return s != "<*>";});
                     if (constLM.size() >= tau * constLogMsg.size())
 //                        return child.cluster.has_value() ? child.cluster : nullopt;
-                        return &(child.cluster.value());
+                        return &((*child).cluster.value());
                 }else
-                    return prefixTreeMatch(child, constLogMsg, i+1);
+                    return prefixTreeMatch((*child), constLogMsg, i+1);
             }
         }
         return nullopt;
