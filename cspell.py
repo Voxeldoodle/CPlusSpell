@@ -8,7 +8,6 @@ import string
 import sys
 from datetime import datetime
 from threading import Timer
-import web_pdb
 
 import CPlusSpell as cp
 import pandas as pd
@@ -125,7 +124,6 @@ class LogParser:
             - ParameterList: if self.keep_para set to True. List of tokens substituted by <*>.
         """
         t0 = datetime.now()
-        # web_pdb.set_trace()
         self.df_log['LineId'] = self.df_log['LineId'].apply(lambda x: x + self.last_line_id)
         self.log_cluster_lines = self.parser.parse(self.df_log["Content"], self.last_line_id)
         t1 = datetime.now()
@@ -213,7 +211,6 @@ class LogParser:
         if self.main_log_name:
             main_structured_path = os.path.join(self.save_path, self.main_log_name + '_main_structured.csv')
             if os.path.isfile(main_structured_path):
-                web_pdb.set_trace()
                 df_log_main_structured = pd.read_csv(main_structured_path)
                 last_main_line_id = df_log_main_structured['LineId'].max()
                 # logging.info(f'last_main_line_id: {last_main_line_id}')
