@@ -8,6 +8,7 @@ import string
 import sys
 from datetime import datetime
 from threading import Timer
+import web_pdb
 
 import CPlusSpell as cp
 import pandas as pd
@@ -124,37 +125,35 @@ class LogParser:
             - ParameterList: if self.keep_para set to True. List of tokens substituted by <*>.
         """
         t0 = datetime.now()
-        self.log_cluster_lines = self.parser.parse(self.df_log["Content"])
+        # web_pdb.set_trace()
+        self.df_log['LineId'] = self.df_log['LineId'].apply(lambda x: x + self.last_line_id)
+        self.log_cluster_lines = self.parser.parse(self.df_log["Content"], self.last_line_id)
         t1 = datetime.now()
 
         logging.info('Parsing done. [Time taken: {!s}]'.format(t1 - t0))
 
         self.cluster_to_df()
 
-        try:
+        self.trie_root = self.parser.trieRoot
 
-            self.trie_root = self.parser.trieRoot
+        if not os.path.exists(self.save_path):
+            os.makedirs(self.save_path)
+        if persistence:
+            self.output_result()
 
-            if not os.path.exists(self.save_path):
-                os.makedirs(self.save_path)
-            if persistence:
-                self.output_result()
+        # Update last_line for next execution if called in batch
+        self.set_last_line_id()
 
-            # Update last_line for next execution if called in batch
-            self.set_last_line_id()
+        root_node_path = os.path.join(self.save_path, 'rootNode.pkl')
+        log_clu_l_path = os.path.join(self.save_path, 'logCluL.pkl')
+        logging.info(f'rootNodePath: {root_node_path}')
+        with open(root_node_path, 'wb') as output:
+            pickle.dump(self.trie_root, output, pickle.HIGHEST_PROTOCOL)
+        logging.info(f'logCluLPath: {log_clu_l_path}')
+        with open(log_clu_l_path, 'wb') as output:
+            pickle.dump(self.log_cluster_lines, output, pickle.HIGHEST_PROTOCOL)
 
-            root_node_path = os.path.join(self.save_path, 'rootNode.pkl')
-            log_clu_l_path = os.path.join(self.save_path, 'logCluL.pkl')
-            logging.info(f'rootNodePath: {root_node_path}')
-            with open(root_node_path, 'wb') as output:
-                pickle.dump(self.trie_root, output, pickle.HIGHEST_PROTOCOL)
-            logging.info(f'logCluLPath: {log_clu_l_path}')
-            with open(log_clu_l_path, 'wb') as output:
-                pickle.dump(self.log_cluster_lines, output, pickle.HIGHEST_PROTOCOL)
-
-            logging.info('Saving done (persistence={!s}). [Time taken: {!s}]'.format(persistence, datetime.now() - t1))
-        except Exception as e:
-            return self.df_log
+        logging.info('Saving done (persistence={!s}). [Time taken: {!s}]'.format(persistence, datetime.now() - t1))
 
         return self.df_log
 
@@ -214,14 +213,15 @@ class LogParser:
         if self.main_log_name:
             main_structured_path = os.path.join(self.save_path, self.main_log_name + '_main_structured.csv')
             if os.path.isfile(main_structured_path):
+                web_pdb.set_trace()
                 df_log_main_structured = pd.read_csv(main_structured_path)
                 last_main_line_id = df_log_main_structured['LineId'].max()
                 # logging.info(f'last_main_line_id: {last_main_line_id}')
                 trimmed = self.df_log[self.df_log['LineId'] > last_main_line_id]
-                df_log_main_structured = pd.concat([df_log_main_structured, trimmed])
+                # df_log_main_structured = pd.concat([df_log_main_structured, trimmed])
 
-                df_log_main_structured.to_csv(os.path.join(self.save_path, self.main_log_name + '_main_structured.csv'),
-                                              index=False)
+                trimmed.to_csv(os.path.join(self.save_path, self.main_log_name + '_main_structured.csv'),
+                                              header=False, index=False, mode='a')
                 self.df_event.to_csv(os.path.join(self.save_path, self.main_log_name + '_main_templates.csv'),
                                      index=False)
             else:

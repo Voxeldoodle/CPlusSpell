@@ -59,13 +59,12 @@ public:
     vector<TemplateCluster> logClust;
     TrieNode trieRoot;
     const float tau;
-    int lastLine = 0;
 
     Parser() : tau(.5) {}
     Parser(float tau)
             : tau(tau){}
-    Parser(vector<TemplateCluster> logClust, TrieNode trieRoot, float tau, int lastLine)
-            : logClust(logClust), trieRoot(trieRoot), tau(tau), lastLine(lastLine){}
+    Parser(vector<TemplateCluster> logClust, TrieNode trieRoot, float tau)
+            : logClust(logClust), trieRoot(trieRoot), tau(tau){}
 
     vector<string> getTemplate(vector<string> lcs, vector<string> seq) {
 //        cout << "getTemplate START" << endl;
@@ -238,7 +237,7 @@ public:
         return nullopt;
     }
 
-    vector<TemplateCluster> parse(const vector<string> content){
+    vector<TemplateCluster> parse(const vector<string> content, const int lastLine=0){
 //        cout << "parse START" << endl;
         int i = 1;
         for (const string& logMsg : content){

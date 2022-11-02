@@ -58,14 +58,14 @@ PYBIND11_MODULE(CPlusSpell, m) {
         .def(py::init<>())
         .def(py::init<float &>(),
             py::arg("tau"))
-        .def(py::init<vector<TemplateCluster> &, TrieNode &, float &, int &>(),
-            py::arg("logCluster"),py::arg("prefixTree"),py::arg("tau"),py::arg("lastLine"))
+        .def(py::init<vector<TemplateCluster> &, TrieNode &, float &>(),
+            py::arg("logCluster"),py::arg("prefixTree"),py::arg("tau"))
         .def_readwrite("trieRoot", &Parser::trieRoot)
         .def_readwrite("logClust", &Parser::logClust)
         .def("parse", &Parser::parse,
             "A function which parses the 'Content' section of a log"
             " generated from spellpy",
-            py::arg("content"))
+            py::arg("content"), py::arg("lastLineId"))
         .def("LCS", &Parser::LCS,
                 "Longest Common Subsequence between String Arrays",
                 py::arg("seq1"),py::arg("seq2"))
