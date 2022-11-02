@@ -21,10 +21,26 @@ sys.setrecursionlimit(10000)
 class LogParser:
 
     def __init__(self, in_dir='./', out_dir='./result/', log_format=None, tau=0.5, keep_para=True, text_max_length=4096,
-                 log_main=None):
+                 log_main=None, *, updated_templates=False):
         """
-        Attributes in priority order (from most necessary to optional)
+        Class for parsing log files.
+        :param in_dir: directory containing the log files to be processed.
+        :param out_dir: directory where to output the results.
+        :param log_format: String expressing the general log format. Must include 'Content'
+            as last entry to specify the variable part.
+            Ex: <Timestamp> <Level> <PID>: <Content>
+        :param tau: parameter between 0 and 1 to indicate aggregation of variable parts.
+            - 1 means aggregate as much as possible (Node 1, Node 2 -> Node <*>)
+            - 0 leaves the original log as template (Node 1, Node 2 -> Node 1, Node 2)
+        :param keep_para: output a list of the variable substituted with the placeholder.
+            Ex: (Node <*> at <*> -> [1,'127.0.0.1'])
+        :param text_max_length: max length allowed for log line.
+        :param log_main: name of the main log to output to.
+        :param updated_templates: whether to update the templates in *_main_structured.csv every time (True)
+            or simply append the new parsed result without updating the old templates (False).
+
         """
+        # Attributes in priority order (from most necessary to optional)
         self.tau = tau
         self.log_format = log_format
         self.trie_root = None
@@ -38,6 +54,7 @@ class LogParser:
         self.log_name = None
         self.main_log_name = log_main
         self.df_event = None
+        self.updated_templates = updated_templates
 
         self.parser = None
 
@@ -214,16 +231,23 @@ class LogParser:
                 df_log_main_structured = pd.read_csv(main_structured_path)
                 last_main_line_id = df_log_main_structured['LineId'].max()
                 # logging.info(f'last_main_line_id: {last_main_line_id}')
-                trimmed = self.df_log[self.df_log['LineId'] > last_main_line_id]
-                # df_log_main_structured = pd.concat([df_log_main_structured, trimmed])
 
-                trimmed.to_csv(os.path.join(self.save_path, self.main_log_name + '_main_structured.csv'),
-                                              header=False, index=False, mode='a')
+                if self.updated_templates:
+                    # TODO: cycle through whole self.log_cluster_lines and output to main_structured
+                    pass
+                else:
+                    trimmed = self.df_log[self.df_log['LineId'] > last_main_line_id]
+                    # df_log_main_structured = pd.concat([df_log_main_structured, trimmed])
+
+                    trimmed.to_csv(os.path.join(self.save_path, self.main_log_name + '_main_structured.csv'),
+                                   header=False, index=False, mode='a')
                 self.df_event.to_csv(os.path.join(self.save_path, self.main_log_name + '_main_templates.csv'),
                                      index=False)
             else:
-                self.df_log.to_csv(os.path.join(self.save_path, self.main_log_name + '_main_structured.csv'), index=False)
-                self.df_event.to_csv(os.path.join(self.save_path, self.main_log_name + '_main_templates.csv'), index=False)
+                self.df_log.to_csv(os.path.join(self.save_path, self.main_log_name + '_main_structured.csv'),
+                                   index=False)
+                self.df_event.to_csv(os.path.join(self.save_path, self.main_log_name + '_main_templates.csv'),
+                                     index=False)
 
         self.df_log.to_csv(os.path.join(self.save_path, self.log_name + '_structured.csv'), index=False)
         self.df_event.to_csv(os.path.join(self.save_path, self.log_name + '_templates.csv'), index=False)
