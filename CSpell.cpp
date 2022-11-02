@@ -202,7 +202,7 @@ public:
     optional<TemplateCluster*> simpleLoopMatch(vector<TemplateCluster> &cluster, vector<string> constLogMsg) {
 //        cout << "simpleLoopMatch START" << endl;
 
-        for (TemplateCluster templateCluster : cluster) {
+        for (TemplateCluster& templateCluster : cluster) {
             if (templateCluster.logTemplate.size() < .5 * constLogMsg.size())
                 continue;
             set<string> tokenSet;
@@ -242,7 +242,6 @@ public:
         int i = 1;
         for (const string& logMsg : content){
 //            cout << "Loop: " << i << " Msg: "<< logMsg << endl;
-
             int logID = i + lastLine;
             vector<string> tokMsg = split(logMsg, "[\\s=:,]");
             vector<string> constLogMsg;
@@ -306,7 +305,8 @@ int main()
     string line;
     vector<string> lines;
 //    ifstream myfile("../HDFS100k");
-    ifstream myfile("../HDFS_2k_Content");
+//    ifstream myfile("../HDFS_2k_Content");
+    ifstream myfile("../HDFSpartaa");
     if(!myfile) //Always test the file open.
     {
         std::cout<<"Error opening output file"<< std::endl;

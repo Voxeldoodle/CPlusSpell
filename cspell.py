@@ -53,7 +53,7 @@ class LogParser:
                 self.log_cluster_lines = pickle.load(f)
             self.set_last_line_id()
             self.parser = cp.Parser(self.log_cluster_lines, self.trie_root,
-                                    self.tau, self.last_line_id)
+                                    self.tau)
             logging.info(f'Load objects done, last_line_id: {self.last_line_id}')
         else:
             self.parser = cp.Parser(self.tau)
