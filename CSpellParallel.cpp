@@ -35,6 +35,7 @@ public:
     vector<int> logIds;
 
     mutable shared_mutex mutex;
+    mutable shared_mutex switchLock;
 
     TemplateCluster(){}
     TemplateCluster(vector<string> tmp, vector<int> ids)
@@ -55,6 +56,30 @@ public:
         swap(logTemplate, other.logTemplate);
         swap(logIds, other.logIds);
         return *this;
+    }
+
+    void promoteLock(){
+        switchLock.lock();
+        mutex.unlock_shared();
+        mutex.lock();
+        switchLock.unlock();
+    }
+
+    void demoteLock(){
+        switchLock.lock();
+        mutex.unlock();
+        mutex.lock_shared();
+        switchLock.unlock();
+    }
+
+    void writeLock(){
+        switchLock.lock();
+        mutex.lock();
+    }
+
+    void writeUnlock(){
+        mutex.unlock();
+        switchLock.unlock();
     }
 };
 
@@ -115,6 +140,7 @@ public:
         mutex.lock();
         switchLock.unlock();
     }
+
     void demoteLock(){
         switchLock.lock();
         mutex.unlock();
@@ -382,32 +408,32 @@ public:
 
             optional<TemplateCluster *>  matchCluster = prefixTreeMatch(trieRoot, constLogMsg, 0);
             if (!matchCluster.has_value()){
+                clustLock.lock_shared();
                 matchCluster = simpleLoopMatch(logClust, constLogMsg);
+                clustLock.unlock_shared();
                 if (!matchCluster.has_value()){
+                    clustLock.lock_shared();
                     matchCluster = LCSMatch(logClust, tokMsg);
+                    clustLock.unlock_shared();
 //                    matchCluster = LCSMatch(logClust, tokMsg);
                     if (!matchCluster.has_value()){
-//                        cout << "Inner FALSE" << endl;
 
                         vector<int> ids = {logID};
                         auto newCluster = TemplateCluster(tokMsg, ids);
-                        printf("ID: %d %s\n", ID, "ADD");
                         clustLock.lock();
                         logClust.push_back(newCluster);
                         addSeqToPrefixTree(trieRoot, newCluster);
                         clustLock.unlock();
                     }else{
-//                        cout << "Inner TRUE" << endl;
                         (*matchCluster.value()).mutex.lock_shared();
                         auto matchClustTemp = (*matchCluster.value()).logTemplate;
                         (*matchCluster.value()).mutex.unlock_shared();
                         auto newTemplate = getTemplate(LCS(tokMsg, matchClustTemp), matchClustTemp);
                         if (newTemplate != matchClustTemp){
-                            printf("ID: %d %s\n", ID, "UPDATE");
                             removeSeqFromPrefixTree(trieRoot, *matchCluster.value());
-                            (*matchCluster.value()).mutex.lock();
+                            (*matchCluster.value()).writeLock();
                             (*matchCluster.value()).logTemplate = newTemplate;
-                            (*matchCluster.value()).mutex.unlock();
+                            (*matchCluster.value()).writeUnlock();
                             addSeqToPrefixTree(trieRoot, *matchCluster.value());
                         }
                     }
@@ -415,19 +441,18 @@ public:
             }
             if (matchCluster.has_value()){
 //                cout << "Outer TRUE" << endl;
-
+                clustLock.lock_shared();
                 for (TemplateCluster& cluster : logClust) {
                     cluster.mutex.lock_shared();
                     if ((*matchCluster.value()).logTemplate == cluster.logTemplate) {
-                        cluster.mutex.unlock_shared();
-                        cluster.mutex.lock();
+                        cluster.promoteLock();
                         cluster.logIds.push_back(logID);
                         cluster.mutex.unlock();
                         break;
                     }
                     cluster.mutex.unlock_shared();
-
                 }
+                clustLock.unlock_shared();
             }
             if (i % 10000 == 0 || i == content.size() ){
                 auto now = chrono::system_clock::now();
@@ -452,8 +477,8 @@ int main()
     vector<string> lines;
 
 //    ifstream myfile("../HDFS100k");
-    ifstream myfile("../HDFS_2k_Content");
-//    ifstream myfile("../HDFSpartaa");
+//    ifstream myfile("../HDFS_2k_Content");
+    ifstream myfile("../HDFSpartaa");
     if(!myfile) //Always test the file open.
     {
         std::cout<<"Error opening output file"<< std::endl;
@@ -465,8 +490,8 @@ int main()
     auto p = Parser(.7);
 //    auto out =  p.parse(lines, lines.size(), 0, 0);
 //    return 0;
-//    int tMax = thread::hardware_concurrency();
-    int tMax = 2;
+    int tMax = thread::hardware_concurrency();
+//    int tMax = 2;
 
     vector<thread> threads;
 

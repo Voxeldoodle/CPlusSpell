@@ -11,7 +11,7 @@ include_directories(/mnt/c/Users/Antonio/AppData/Local/Programs/Python/Python310
 add_executable(CSpell CSpell.cpp)
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -fopenmp")
 #add_definitions(-openmp)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -g")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -g -ggdb -O0")
 find_package(Threads)
 add_executable(CSpellParallel CSpellParallel.cpp)
 target_link_libraries(CSpellParallel ${CMAKE_THREAD_LIBS_INIT})
