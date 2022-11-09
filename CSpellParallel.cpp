@@ -238,13 +238,9 @@ public:
                 parentn->child[tok].templateNo++;
             else{
                 (*parentn).promoteLock();
-//                (*parentn).mutex.unlock_shared();
-//                (*parentn).mutex.lock();
                 parentn->child.insert({tok,TrieNode(tok, 1)});
 //                parentn->child[tok] = TrieNode(tok, 1);
                 (*parentn).demoteLock();
-//                (*parentn).mutex.unlock();
-//                (*parentn).mutex.lock_shared();
             }
             auto old = parentn;
             parentn = &parentn->child[tok];
@@ -360,8 +356,8 @@ public:
 //        cout << "prefixTreeMatch START" << endl;
 //        printf("id: %d %s\n", id, "trieMatch");
 
+        prefixTree.mutex.lock_shared();
         for (int i = start; i < constLogMsg.size(); i++) {
-            prefixTree.mutex.lock_shared();
             if (prefixTree.child.count(constLogMsg[i])){
                 prefixTree.child.at(constLogMsg[i]).mutex.lock_shared();
                 TrieNode *child = &(prefixTree.child.at(constLogMsg[i]));
@@ -386,8 +382,8 @@ public:
 
                 (*child).mutex.unlock_shared();
             }
-            prefixTree.mutex.unlock_shared();
         }
+        prefixTree.mutex.unlock_shared();
         return nullopt;
     }
 
@@ -415,7 +411,6 @@ public:
                     clustLock.lock_shared();
                     matchCluster = LCSMatch(logClust, tokMsg);
                     clustLock.unlock_shared();
-//                    matchCluster = LCSMatch(logClust, tokMsg);
                     if (!matchCluster.has_value()){
 
                         vector<int> ids = {logID};
@@ -490,8 +485,8 @@ int main()
     auto p = Parser(.7);
 //    auto out =  p.parse(lines, lines.size(), 0, 0);
 //    return 0;
-    int tMax = thread::hardware_concurrency();
-//    int tMax = 2;
+//    int tMax = thread::hardware_concurrency();
+    int tMax = 2;
 
     vector<thread> threads;
 

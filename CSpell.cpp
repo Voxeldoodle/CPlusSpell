@@ -254,7 +254,6 @@ public:
                 matchCluster = simpleLoopMatch(logClust, constLogMsg);
                 if (!matchCluster.has_value()){
                     matchCluster = LCSMatch(logClust, tokMsg);
-//                    matchCluster = LCSMatch(logClust, tokMsg);
                     if (!matchCluster.has_value()){
 //                        cout << "Inner FALSE" << endl;
 
