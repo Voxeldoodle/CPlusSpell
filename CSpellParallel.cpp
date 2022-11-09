@@ -6,8 +6,6 @@
 #include <optional>
 #include <set>
 #include <cassert>
-#include <chrono>
-#include <ctime>
 #include <fstream>
 #include <shared_mutex>
 #include <thread>
@@ -29,6 +27,57 @@ vector<string> split(string s, const string& delimiter){
     return res;
 }
 
+vector<string> LCS(vector<string> seq1, vector<string> seq2) {
+    vector<vector<int>> lengths(seq1.size()+1,vector<int>(seq2.size()+1));
+    for (int i = 0; i < seq1.size() ; i++){
+        for (int j = 0; j < seq2.size(); j++) {
+//                printf("i: %d j:%d\n", i, j);
+            if (seq1[i] == seq2[j])
+                lengths[i+1][j+1] = lengths[i][j]+1;
+            else
+                lengths[i+1][j+1] = max(lengths[i+1][j], lengths[i][j+1]);
+        }
+    }
+    vector<string> result;
+    auto lenOfSeq1= seq1.size();
+    auto lenOfSeq2 = seq2.size();
+    while (lenOfSeq1 != 0 && lenOfSeq2 != 0){
+        if (lengths[lenOfSeq1][lenOfSeq2] == lengths[lenOfSeq1-1][lenOfSeq2])
+            lenOfSeq1--;
+        else if (lengths[lenOfSeq1][lenOfSeq2] == lengths[lenOfSeq1][lenOfSeq2-1])
+            lenOfSeq2--;
+        else{
+            assert(seq1[lenOfSeq1-1] == seq2[lenOfSeq2-1] && "Error in LCS");
+            result.insert(result.begin(), seq1[lenOfSeq1-1]);
+            lenOfSeq1--;
+            lenOfSeq2--;
+        }
+    }
+    return result;
+}
+
+vector<string> getTemplate(vector<string> lcs, vector<string> seq) {
+    vector<string> res;
+    if (lcs.empty())
+        return res;
+
+    reverse(lcs.begin(), lcs.end());
+    int i = 0;
+    for (const string& tok : seq) {
+        i++;
+        if (tok == lcs[lcs.size() - 1]){
+            res.push_back(tok);
+            lcs.erase(lcs.begin() + lcs.size() - 1);
+        }else
+            res.emplace_back("<*>");
+        if (lcs.empty())
+            break;
+    }
+    if (i < seq.size())
+        res.emplace_back("<*>");
+    return res;
+}
+
 class TemplateCluster {
 public:
     vector<string> logTemplate;
@@ -42,7 +91,7 @@ public:
             : logTemplate(tmp), logIds(ids){}
 
     TemplateCluster(const TemplateCluster& other) {
-        lock_guard<shared_mutex> l(other.mutex);
+//        lock_guard<shared_mutex> l(other.mutex);
         logTemplate = other.logTemplate;
         logIds = other.logIds;
     }
@@ -58,15 +107,16 @@ public:
         return *this;
     }
 
-    void promoteLock(){
-        switchLock.lock();
+    bool promoteLock(){
+        bool res = switchLock.try_lock();
+        if (!res)
+            return false;
         mutex.unlock_shared();
         mutex.lock();
-        switchLock.unlock();
+        return true;
     }
 
     void demoteLock(){
-        switchLock.lock();
         mutex.unlock();
         mutex.lock_shared();
         switchLock.unlock();
@@ -92,6 +142,7 @@ public:
 
     mutable shared_mutex mutex;
     mutable shared_mutex switchLock;
+    mutable shared_mutex findLock;
 
     TrieNode(){}
     TrieNode(string token, int templateNo)
@@ -101,7 +152,7 @@ public:
              string token,
              int templateNo,
              const map<string, TrieNode> &child) :
-             cluster(cluster), token(std::move(token)), templateNo(templateNo), child(child) {}
+            cluster(cluster), token(std::move(token)), templateNo(templateNo), child(child) {}
 
     TrieNode(const TrieNode& other) {
         lock_guard<shared_mutex> l(other.mutex);
@@ -134,15 +185,16 @@ public:
         return *this;
     }
 
-    void promoteLock(){
-        switchLock.lock();
+    bool promoteLock(){
+        bool res = switchLock.try_lock();
+        if (!res)
+            return false;
         mutex.unlock_shared();
         mutex.lock();
-        switchLock.unlock();
+        return true;
     }
 
     void demoteLock(){
-        switchLock.lock();
         mutex.unlock();
         mutex.lock_shared();
         switchLock.unlock();
@@ -173,119 +225,98 @@ public:
     Parser(vector<TemplateCluster> logClust, TrieNode trieRoot, float tau)
             : logClust(logClust), trieRoot(trieRoot), tau(tau){}
 
-    vector<string> getTemplate(vector<string> lcs, vector<string> seq) {
-//        cout << "getTemplate START" << endl;
+    void removeSeqFromPrefixTree(TrieNode& prefixTreeRoot, vector<string> logTemplate){
+//        printf("ID: %d removeSeqFromPrefixTree\n", id);
 
-        vector<string> res;
-        if (lcs.empty())
-            return res;
-
-        reverse(lcs.begin(), lcs.end());
-        int i = 0;
-        for (const string& tok : seq) {
-            i++;
-            if (tok == lcs[lcs.size() - 1]){
-                res.push_back(tok);
-                lcs.erase(lcs.begin() + lcs.size() - 1);
-            }else
-                res.emplace_back("<*>");
-            if (lcs.empty())
-                break;
-        }
-        if (i < seq.size())
-            res.emplace_back("<*>");
-        return res;
-    }
-
-    void removeSeqFromPrefixTree(TrieNode& prefixTreeRoot, TemplateCluster cluster) {
-        printf("id: %d %s\n", id, "removeSeqFromPrefixTree");
-        auto parentn = &prefixTreeRoot;
+        auto parentIter = &prefixTreeRoot;
         vector<string> seq;
-        copy_if (cluster.logTemplate.begin(), cluster.logTemplate.end(),
+        copy_if (logTemplate.begin(), logTemplate.end(),
                  back_inserter(seq),
                  [](const string& s){return s != "<*>";});
+        (*parentIter).mutex.lock_shared();
         for (const string& tok : seq) {
-            (*parentn).mutex.lock_shared();
-            if ((*parentn).child.count(tok)){
-                auto matched = &(*parentn).child[tok];
+            // Assume parentIter locked as Shared
+
+            checkExists:
+            // WARNING: possible deletion after finding the branch.
+            if ((*parentIter).child.count(tok)){
+                parentIter->child[tok].mutex.lock_shared();
+                auto matched = &(*parentIter).child[tok];
                 if ((*matched).templateNo == 1){
-                    (*parentn).promoteLock();
-                    (*parentn).child.erase(tok);
-                    (*parentn).mutex.unlock();
+                    if (!(*parentIter).promoteLock()){
+                        (*parentIter).mutex.unlock_shared();
+                        (*parentIter).mutex.lock_shared();
+                        goto checkExists;
+                    }
+                    // WARNING: possible unsafe destruction of branch with active locks.
+                    (*parentIter).child.erase(tok);
+                    (*parentIter).demoteLock();
                     break;
                 }else {
+                    if (!(*matched).promoteLock()){
+                        (*matched).mutex.unlock_shared();
+                        goto checkExists;
+                    }
                     (*matched).templateNo--;
-                    auto old = parentn;
-                    parentn = matched;
+                    (*matched).demoteLock();
+                    auto old = parentIter;
+                    parentIter = matched;
                     (*old).mutex.unlock_shared();
                 }
             }
         }
+        (*parentIter).mutex.unlock_shared();
     }
 
-    void addSeqToPrefixTree(TrieNode& prefixTreeRoot, TemplateCluster newCluster) {
-//        cout << "addSeqToPrefixTree START" << endl;
-        printf("id: %d %s\n", id, "addSeqToPrefixTree");
+    void addSeqToPrefixTree(TrieNode& prefixTreeRoot, TemplateCluster newCluster){
+//        printf("ID: %d addSeqToPrefixTree\n", id);
 
-        auto parentn = &prefixTreeRoot;
+        auto parentIter = &prefixTreeRoot;
         vector<string> seq;
         copy_if (newCluster.logTemplate.begin(), newCluster.logTemplate.end(),
                  back_inserter(seq),
                  [](const string& s){return s != "<*>";});
+        (*parentIter).mutex.lock_shared();
         for (const string& tok : seq) {
-            (*parentn).mutex.lock_shared();
-            if (parentn->child.count(tok))
-                parentn->child[tok].templateNo++;
+            // Assume parentIter locked as Shared
+            checkBranch:
+            if (parentIter->child.count(tok))
+                parentIter->child[tok].templateNo++;
             else{
-                (*parentn).promoteLock();
-                parentn->child.insert({tok,TrieNode(tok, 1)});
-//                parentn->child[tok] = TrieNode(tok, 1);
-                (*parentn).demoteLock();
+                if (!(*parentIter).promoteLock()){
+                    (*parentIter).mutex.unlock_shared();
+                    (*parentIter).mutex.lock_shared();
+                    goto checkBranch;
+                }
+                parentIter->child.insert({tok,TrieNode(tok, 1)});
+                (*parentIter).demoteLock();
             }
-            auto old = parentn;
-            parentn = &parentn->child[tok];
+            auto old = parentIter;
+            // Lock child and unlock parent
+            parentIter->child[tok].mutex.lock_shared();
+            parentIter = &parentIter->child[tok];
             (*old).mutex.unlock_shared();
         }
-        if (!parentn->cluster.has_value()) {
-            (*parentn).writeLock();
-            parentn->cluster = newCluster;
-            (*parentn).writeUnlock();
+        finalCheck:
+        // If empty leaf add cluster, else unlock node
+        if (!parentIter->cluster.has_value()) {
+            if (!(*parentIter).promoteLock()){
+                (*parentIter).mutex.unlock_shared();
+                (*parentIter).mutex.lock_shared();
+                goto finalCheck;
+            }
+            parentIter->cluster = newCluster;
+            (*parentIter).writeUnlock();
+        }else {
+            (*parentIter).mutex.unlock_shared();
         }
     }
 
-    vector<string> LCS(vector<string> seq1, vector<string> seq2) {
-
-        vector<vector<int>> lengths(seq1.size()+1,vector<int>(seq2.size()+1));
-        for (int i = 0; i < seq1.size() ; i++){
-            for (int j = 0; j < seq2.size(); j++) {
-//                printf("i: %d j:%d\n", i, j);
-                if (seq1[i] == seq2[j])
-                    lengths[i+1][j+1] = lengths[i][j]+1;
-                else
-                    lengths[i+1][j+1] = max(lengths[i+1][j], lengths[i][j+1]);
-            }
-        }
-        vector<string> result;
-        auto lenOfSeq1= seq1.size();
-        auto lenOfSeq2 = seq2.size();
-        while (lenOfSeq1 != 0 && lenOfSeq2 != 0){
-            if (lengths[lenOfSeq1][lenOfSeq2] == lengths[lenOfSeq1-1][lenOfSeq2])
-                lenOfSeq1--;
-            else if (lengths[lenOfSeq1][lenOfSeq2] == lengths[lenOfSeq1][lenOfSeq2-1])
-                lenOfSeq2--;
-            else{
-                assert(seq1[lenOfSeq1-1] == seq2[lenOfSeq2-1] && "Error in LCS");
-                result.insert(result.begin(), seq1[lenOfSeq1-1]);
-                lenOfSeq1--;
-                lenOfSeq2--;
-            }
-        }
-        return result;
-    }
-
-    optional<TemplateCluster*> LCSMatch(vector<TemplateCluster> &cluster, vector<string> logMsg) {
-//        cout << "LCSMatch START" << endl;
-        printf("id: %d %s\n", id, "LCSMatch");
+    optional<TemplateCluster*> LCSMatch(vector<TemplateCluster> &cluster, vector<string> logMsg){
+        /*
+         * Returns reference to matching TemplateCluster locked as shared.
+         */
+//        printf("ID: %d LCSMatch\n", id);
 
         optional<TemplateCluster *> res;
         set<string> msgSet;
@@ -315,22 +346,34 @@ public:
                 (lenLcs == maxLen &&
                  templateCluster.logTemplate.size() < (*maxLCS.value()).logTemplate.size())){
                 maxLen = lenLcs;
+                // Unlock previous maximum
+                if (maxLCS.has_value())
+                    (*maxLCS.value()).mutex.unlock_shared();
                 maxLCS = optional(&templateCluster);
             }
-            templateCluster.mutex.unlock_shared();
+
+            // Keep maximum value locked
+            if (maxLCS.value() != &templateCluster){
+                templateCluster.mutex.unlock_shared();
+            }
         }
 
         if (maxLen >= tau * msgLen)
             res = maxLCS;
-
-//        cout << "LCSMatch END" << endl;
+        else {
+            // Unlock max cluster if not selected
+            if (maxLCS.has_value())
+                (*maxLCS.value()).mutex.unlock_shared();
+        }
 
         return res;
     }
 
-    optional<TemplateCluster*> simpleLoopMatch(vector<TemplateCluster> &cluster, vector<string> constLogMsg) {
-//        cout << "simpleLoopMatch START" << endl;
-        printf("id: %d %s\n", id, "loopMatch");
+    optional<TemplateCluster*> simpleLoopMatch(vector<TemplateCluster> &cluster, vector<string> constLogMsg){
+        /*
+         * Returns reference to matching TemplateCluster locked as shared.
+         */
+//        printf("ID: %d simpleLoopMatch\n", id);
 
         for (TemplateCluster& templateCluster : cluster) {
             templateCluster.mutex.lock_shared();
@@ -344,7 +387,7 @@ public:
             }
             if (all_of(templateCluster.logTemplate.cbegin(), templateCluster.logTemplate.cend(),
                        [&tokenSet](const string &tok) { return tok == "<*>" || tokenSet.count(tok); })) {
-                templateCluster.mutex.unlock_shared();
+//                templateCluster.mutex.unlock_shared();
                 return &templateCluster;
             }
             templateCluster.mutex.unlock_shared();
@@ -352,12 +395,12 @@ public:
         return nullopt;
     }
 
-    optional<TemplateCluster*> prefixTreeMatch(TrieNode &prefixTree, vector<string> constLogMsg, int start) {
-//        cout << "prefixTreeMatch START" << endl;
-//        printf("id: %d %s\n", id, "trieMatch");
+    vector<string> prefixTreeMatch(TrieNode &prefixTree, vector<string> constLogMsg, int start){
+//        printf("ID: %d prefixTreeMatch\n", id);
 
         prefixTree.mutex.lock_shared();
         for (int i = start; i < constLogMsg.size(); i++) {
+//            WARNING: possible deletion after finding the branch.
             if (prefixTree.child.count(constLogMsg[i])){
                 prefixTree.child.at(constLogMsg[i]).mutex.lock_shared();
                 TrieNode *child = &(prefixTree.child.at(constLogMsg[i]));
@@ -367,11 +410,10 @@ public:
                     copy_if(tmp.begin(), tmp.end(),
                             back_inserter(constLM),
                             [](string s) { return s != "<*>"; });
-                    if (constLM.size() >= tau * constLogMsg.size()) {
+                    if (constLM.size() >= tau * constLogMsg.size()){
                         (*child).mutex.unlock_shared();
                         prefixTree.mutex.unlock_shared();
-//                        return child.cluster.has_value() ? child.cluster : nullopt;
-                        return &((*child).cluster.value());
+                        return (*child).cluster.value().logTemplate;
                     }
                 } else {
                     auto res = prefixTreeMatch((*child), constLogMsg, i + 1);
@@ -379,87 +421,87 @@ public:
                     prefixTree.mutex.unlock_shared();
                     return res;
                 }
-
                 (*child).mutex.unlock_shared();
             }
         }
         prefixTree.mutex.unlock_shared();
-        return nullopt;
+        return {};
+//        return vector<string>();
     }
 
-    vector<TemplateCluster> parse(vector<string> content, int end, int lastLine=0, int ID=0){
-//        cout << "parse START" << endl;
+    void parallel_parse(vector<string> content, int end, int lastLine=0, int ID=0){
         printf("ID: %d start: %d end: %d.\n", ID, lastLine, end);
 
-//        int i = 1;
         this->id = ID;
         for (int i = lastLine+1; i <= end; i++) {
-            printf("ID: %d line: %d.\n", ID, i);
+//            printf("ID: %d line: %d.\n", ID, i);
             int logID = i;
             vector<string> tokMsg = split(content.at(i-1), "[\\s=:,]");
             vector<string> constLogMsg;
             copy_if (tokMsg.begin(), tokMsg.end(),
                      back_inserter(constLogMsg),
                      [](string s){return s != "<*>";});
-
-            optional<TemplateCluster *>  matchCluster = prefixTreeMatch(trieRoot, constLogMsg, 0);
-            if (!matchCluster.has_value()){
+            vector<string> templateMatch = prefixTreeMatch(trieRoot, constLogMsg, 0);
+            if (templateMatch.empty()){
                 clustLock.lock_shared();
-                matchCluster = simpleLoopMatch(logClust, constLogMsg);
+                optional<TemplateCluster *> matchCluster = simpleLoopMatch(logClust, constLogMsg);
                 clustLock.unlock_shared();
                 if (!matchCluster.has_value()){
                     clustLock.lock_shared();
                     matchCluster = LCSMatch(logClust, tokMsg);
                     clustLock.unlock_shared();
+                    lockCheckpoint:
                     if (!matchCluster.has_value()){
-
                         vector<int> ids = {logID};
                         auto newCluster = TemplateCluster(tokMsg, ids);
+//                        printf("ID: %d ADDING\n", id);
                         clustLock.lock();
                         logClust.push_back(newCluster);
                         addSeqToPrefixTree(trieRoot, newCluster);
                         clustLock.unlock();
                     }else{
-                        (*matchCluster.value()).mutex.lock_shared();
-                        auto matchClustTemp = (*matchCluster.value()).logTemplate;
-                        (*matchCluster.value()).mutex.unlock_shared();
-                        auto newTemplate = getTemplate(LCS(tokMsg, matchClustTemp), matchClustTemp);
-                        if (newTemplate != matchClustTemp){
-                            removeSeqFromPrefixTree(trieRoot, *matchCluster.value());
-                            (*matchCluster.value()).writeLock();
+                        auto matchClustTemplate = matchCluster.value()->logTemplate;
+                        auto newTemplate = getTemplate(LCS(tokMsg, matchClustTemplate), matchClustTemplate);
+                        if (newTemplate != matchClustTemplate){
+//                            printf("ID: %d UPDATING\n", id);
+                            removeSeqFromPrefixTree(trieRoot, matchCluster.value()->logTemplate);
+                            if (!(*matchCluster.value()).promoteLock()){
+                                (*matchCluster.value()).mutex.unlock_shared();
+                                (*matchCluster.value()).mutex.lock_shared();
+                                goto lockCheckpoint;
+                            }
                             (*matchCluster.value()).logTemplate = newTemplate;
-                            (*matchCluster.value()).writeUnlock();
+                            (*matchCluster.value()).demoteLock();
                             addSeqToPrefixTree(trieRoot, *matchCluster.value());
                         }
+                        templateMatch = matchCluster.value()->logTemplate;
+                        (*matchCluster.value()).mutex.unlock_shared();
                     }
+                }else{
+                    templateMatch = matchCluster.value()->logTemplate;
+                    (*matchCluster.value()).mutex.unlock_shared();
                 }
             }
-            if (matchCluster.has_value()){
-//                cout << "Outer TRUE" << endl;
+            if (!templateMatch.empty()){
                 clustLock.lock_shared();
                 for (TemplateCluster& cluster : logClust) {
+                    clusterCheckpoint:
                     cluster.mutex.lock_shared();
-                    if ((*matchCluster.value()).logTemplate == cluster.logTemplate) {
-                        cluster.promoteLock();
+                    if (templateMatch == cluster.logTemplate) {
+                        if (!cluster.promoteLock()){
+                            cluster.mutex.unlock_shared();
+                            goto clusterCheckpoint;
+                        }
                         cluster.logIds.push_back(logID);
-                        cluster.mutex.unlock();
+                        cluster.writeUnlock();
                         break;
                     }
                     cluster.mutex.unlock_shared();
                 }
                 clustLock.unlock_shared();
             }
-            if (i % 10000 == 0 || i == content.size() ){
-                auto now = chrono::system_clock::now();
-                auto time = chrono::system_clock::to_time_t(now);
-                auto timestamp = strtok(ctime(&time), "\n");
-//                chrono::duration<double> elapsed_seconds = end-start;
-//                elapsed_seconds.count()
-                printf("ID: %d [%s] Processed %2.2lu%% of log lines.\n",id, timestamp, 100*i/content.size());
-//                printf("%s Processed %2.2lu%% of log lines.\n",ctime(&time), 100*i/content.size());
-            }
         }
-        return logClust;
+
     }
 };
 
@@ -471,22 +513,22 @@ int main()
     string line;
     vector<string> lines;
 
-//    ifstream myfile("../HDFS100k");
-//    ifstream myfile("../HDFS_2k_Content");
-    ifstream myfile("../HDFSpartaa");
-    if(!myfile) //Always test the file open.
+//    ifstream myFile("../HDFS100k");
+//    ifstream myFile("../HDFS_2k_Content");
+    ifstream myFile("../HDFSpartaa");
+    if(!myFile) //Always test the file open.
     {
         std::cout<<"Error opening output file"<< std::endl;
         return -1;
     }
-    while (getline(myfile, line))
+    while (getline(myFile, line))
         lines.push_back(line);
 
     auto p = Parser(.7);
 //    auto out =  p.parse(lines, lines.size(), 0, 0);
 //    return 0;
-//    int tMax = thread::hardware_concurrency();
-    int tMax = 2;
+    int tMax = thread::hardware_concurrency();
+//    int tMax = 8;
 
     vector<thread> threads;
 
@@ -495,7 +537,7 @@ int main()
         int start = chunk * i;
 //        thread t = thread(&Parser::parse, &p,lines, start, i);
 //        threads.push_back(std::move(t));
-        threads.emplace_back(&Parser::parse, &p,lines, chunk * (i+1), start, i);
+        threads.emplace_back(&Parser::parallel_parse, &p,lines, chunk * (i+1), start, i);
     }
 
     for (auto& th : threads)
