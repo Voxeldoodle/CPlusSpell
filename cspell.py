@@ -149,14 +149,15 @@ class LogParser:
 
         self.cluster_to_df()
 
-        self.trie_root = self.parser.trieRoot
-
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
         if persistence:
             self.output_result()
 
-        # Update last_line for next execution if called in batch
+        self.trie_root = self.parser.trieRoot
+
+
+    # Update last_line for next execution if called in batch
         self.set_last_line_id()
 
         root_node_path = os.path.join(self.save_path, 'rootNode.pkl')

@@ -142,7 +142,6 @@ public:
 
     mutable shared_mutex mutex;
     mutable shared_mutex switchLock;
-    mutable shared_mutex findLock;
 
     TrieNode(){}
     TrieNode(string token, int templateNo)
@@ -183,6 +182,10 @@ public:
         templateNo = other.templateNo;
         child = other.child;
         return *this;
+    }
+
+    const optional<TemplateCluster> &getCluster() const {
+        return cluster;
     }
 
     bool promoteLock(){
@@ -503,7 +506,26 @@ public:
         }
 
     }
+
+    vector<TemplateCluster> parse(const vector<string> content, const int lastLine=0){
+        vector<thread> threads;
+//        int tMax = thread::hardware_concurrency()/2;
+        int tMax = min(((int)thread::hardware_concurrency()), 4);
+//        int tMax = 2;
+
+        int chunk = (int)content.size() / tMax;
+        for (int i = 0; i < tMax; ++i) {
+            int start = chunk * i;
+            threads.emplace_back(&Parser::parallel_parse, this,content, chunk * (i+1), start, i);
+        }
+
+        for (auto& th : threads)
+            th.join();
+
+        return logClust;
+    }
 };
+
 
 int main()
 {
@@ -525,23 +547,7 @@ int main()
         lines.push_back(line);
 
     auto p = Parser(.7);
-//    auto out =  p.parse(lines, lines.size(), 0, 0);
-//    return 0;
-    int tMax = thread::hardware_concurrency();
-//    int tMax = 8;
-
-    vector<thread> threads;
-
-    int chunk = (int)lines.size() / tMax;
-    for (int i = 0; i < tMax; ++i) {
-        int start = chunk * i;
-//        thread t = thread(&Parser::parse, &p,lines, start, i);
-//        threads.push_back(std::move(t));
-        threads.emplace_back(&Parser::parallel_parse, &p,lines, chunk * (i+1), start, i);
-    }
-
-    for (auto& th : threads)
-        th.join();
+    auto out =  p.parse(lines, 0);
 
     cout << "OUT" << endl;
 }
