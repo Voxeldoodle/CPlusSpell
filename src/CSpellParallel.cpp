@@ -78,34 +78,10 @@ vector<string> getTemplate(vector<string> lcs, vector<string> seq) {
     return res;
 }
 
-class TemplateCluster {
+class LockWrapper{
 public:
-    vector<string> logTemplate;
-    vector<int> logIds;
-
     mutable shared_mutex mutex;
     mutable shared_mutex switchLock;
-
-    TemplateCluster(){}
-    TemplateCluster(vector<string> tmp, vector<int> ids)
-            : logTemplate(tmp), logIds(ids){}
-
-    TemplateCluster(const TemplateCluster& other) {
-//        lock_guard<shared_mutex> l(other.mutex);
-        logTemplate = other.logTemplate;
-        logIds = other.logIds;
-    }
-    TemplateCluster(TemplateCluster&& other)  noexcept {
-        lock_guard<shared_mutex> l(other.mutex);
-        logTemplate = other.logTemplate;
-        logIds = other.logIds;
-    }
-    TemplateCluster& operator=(TemplateCluster&& other)  noexcept {
-        lock_guard<shared_mutex> l1(this->mutex), l2(other.mutex);
-        swap(logTemplate, other.logTemplate);
-        swap(logIds, other.logIds);
-        return *this;
-    }
 
     bool promoteLock(){
         bool res = switchLock.try_lock();
@@ -133,21 +109,45 @@ public:
     }
 };
 
-class TrieNode {
+class TemplateCluster : public LockWrapper{
+public:
+    vector<string> logTemplate;
+    vector<int> logIds;
+
+    TemplateCluster(){}
+    TemplateCluster(vector<string> tmp, vector<int> ids)
+            : logTemplate(tmp), logIds(ids){}
+
+    TemplateCluster(const TemplateCluster& other) {
+//        lock_guard<shared_mutex> l(other.mutex);
+        logTemplate = other.logTemplate;
+        logIds = other.logIds;
+    }
+    TemplateCluster(TemplateCluster&& other)  noexcept {
+        lock_guard<shared_mutex> l(other.mutex);
+        logTemplate = other.logTemplate;
+        logIds = other.logIds;
+    }
+    TemplateCluster& operator=(TemplateCluster&& other)  noexcept {
+        lock_guard<shared_mutex> l1(this->mutex), l2(other.mutex);
+        swap(logTemplate, other.logTemplate);
+        swap(logIds, other.logIds);
+        return *this;
+    }
+};
+
+class TrieNode : public LockWrapper{
 public:
     optional<TemplateCluster> cluster;
     string token;
     int templateNo;
     map<string , TrieNode> child;
 
-    mutable shared_mutex mutex;
-    mutable shared_mutex switchLock;
-
     TrieNode(){}
     TrieNode(string token, int templateNo)
             : token(std::move(token)), templateNo(templateNo){}
 
-    TrieNode(const optional<TemplateCluster> &cluster,
+    TrieNode(optional<TemplateCluster> cluster,
              string token,
              int templateNo,
              const map<string, TrieNode> &child) :
@@ -182,35 +182,6 @@ public:
         templateNo = other.templateNo;
         child = other.child;
         return *this;
-    }
-
-    optional<TemplateCluster> getCluster() const{
-        return cluster;
-    }
-
-    bool promoteLock(){
-        bool res = switchLock.try_lock();
-        if (!res)
-            return false;
-        mutex.unlock_shared();
-        mutex.lock();
-        return true;
-    }
-
-    void demoteLock(){
-        mutex.unlock();
-        mutex.lock_shared();
-        switchLock.unlock();
-    }
-
-    void writeLock(){
-        switchLock.lock();
-        mutex.lock();
-    }
-
-    void writeUnlock(){
-        mutex.unlock();
-        switchLock.unlock();
     }
 };
 
@@ -535,9 +506,9 @@ int main()
     string line;
     vector<string> lines;
 
-//    ifstream myFile("../HDFS100k");
-//    ifstream myFile("../HDFS_2k_Content");
-    ifstream myFile("../HDFSpartaa");
+//    ifstream myFile("../Resources/HDFS100k");
+//    ifstream myFile("../Resources/HDFS_2k_Content");
+    ifstream myFile("../Resources/HDFSpartaa");
     if(!myFile) //Always test the file open.
     {
         std::cout<<"Error opening output file"<< std::endl;

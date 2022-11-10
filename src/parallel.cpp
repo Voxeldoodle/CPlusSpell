@@ -32,16 +32,25 @@ PYBIND11_MODULE(CPlusSpell, m) {
     py::class_<TrieNode>(m, "TrieNode")
             .def(py::init<>())
             .def(py::init<string &, int &>())
-//            .def_readonly("cluster", &TrieNode::cluster)
-            .def_readwrite("cluster", &TrieNode::cluster)
-//            .def("getCluster", &TrieNode::getCluster)
+            .def_readonly("cluster", &TrieNode::cluster)
+//            .def_readwrite("cluster", &TrieNode::cluster)
             .def_readwrite("token", &TrieNode::token)
             .def_readwrite("templateNo", &TrieNode::templateNo)
             .def_readwrite("child", &TrieNode::child)
             .def(py::pickle(
                     [](const TrieNode &t) { // __getstate__
                         /* Return a tuple that fully encodes the state of the object */
-                        return py::make_tuple(t.cluster, t.token, t.templateNo, t.child);
+                        vector<string> temp = {};
+                        vector<int> ids = {};
+                        if (t.cluster.has_value()){
+                            cout << "Value" << endl;
+                            temp = t.cluster.value().logTemplate;
+                            ids = t.cluster.value().logIds;
+                        }else
+                            cout << "NO Value" << endl;
+//                        return py::make_tuple(temp, ids,t.token, t.templateNo, t.child);
+//                        return py::make_tuple(t.cluster,t.token, t.templateNo);
+                        return py::make_tuple(t.cluster,t.token, t.templateNo, t.child);
                     },
                     [](py::tuple t) { // __setstate__
                         if (t.size() != 4)
@@ -49,6 +58,8 @@ PYBIND11_MODULE(CPlusSpell, m) {
 
                         /* Create a new C++ instance */
                         TrieNode trie(
+//                                *new TemplateCluster(t[0].cast<vector<string>>(),
+//                                                    t[1].cast<vector<int>>()),
                                 t[0].cast<optional<TemplateCluster>>(),
                                 t[1].cast<string>(),
                                 t[2].cast<int>(),
