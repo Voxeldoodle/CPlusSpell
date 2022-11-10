@@ -184,7 +184,7 @@ public:
         return *this;
     }
 
-    const optional<TemplateCluster> &getCluster() const {
+    optional<TemplateCluster> getCluster() const{
         return cluster;
     }
 

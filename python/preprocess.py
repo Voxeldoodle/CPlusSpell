@@ -1,4 +1,4 @@
-exec(open('./spell.py').read())
+exec(open('spell.py').read())
 
 log = 'HDFS'
 base_dir = '/content/'

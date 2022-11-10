@@ -334,7 +334,7 @@ public:
 };
 
 /*
- * Results 7x slower than single thread CSpell, most likely due to thread overhead,
+ * Results 7x slower than single thread src, most likely due to thread overhead,
  * but also it might be caused by the inefficient/unsuccessful thread destruction.
  */
 int main()

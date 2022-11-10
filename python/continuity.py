@@ -11,7 +11,7 @@ log = 'HDFS'
 base_dir = '/mnt/c/Users/Antonio/Desktop/Tesi Magistrale/Codice/Resources/'
 # input_dir = '.'
 input_dir = base_dir + f'{log}Split/'
-output_dir = f'./{log}_result/'
+output_dir = f'../{log}_result/'
 if log == 'BGL':
     log_format = '<Label> <Timestamp> <Date> <Node> <Time> <NodeRepeat> <Type> <Component> <Level> <Content>'
     tau = 0.75

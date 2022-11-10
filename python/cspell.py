@@ -6,6 +6,7 @@ import re
 import signal
 import string
 import sys
+import web_pdb
 from datetime import datetime
 from threading import Timer
 
@@ -147,6 +148,8 @@ class LogParser:
 
         logging.info('Parsing done. [Time taken: {!s}]'.format(t1 - t0))
 
+        web_pdb.set_trace()
+        self.trie_root = self.parser.trieRoot
         self.cluster_to_df()
 
         if not os.path.exists(self.save_path):
@@ -154,10 +157,8 @@ class LogParser:
         if persistence:
             self.output_result()
 
-        self.trie_root = self.parser.trieRoot
 
-
-    # Update last_line for next execution if called in batch
+        # Update last_line for next execution if called in batch
         self.set_last_line_id()
 
         root_node_path = os.path.join(self.save_path, 'rootNode.pkl')

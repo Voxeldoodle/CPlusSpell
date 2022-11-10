@@ -1,5 +1,3 @@
-import pandas as pd
-
 import spell
 import cspell as cp
 import os
@@ -10,10 +8,11 @@ import os
 test = 'py'
 
 log = 'HDFS'
-base_dir = './'
+base_dir = '../'
 # input_dir = '.'
 input_dir = f'{log}Split/'
-output_dir = f'{log}_result/'
+# output_dir = f'{log}_result/'
+output_dir = f'../'
 if log == 'BGL':
     log_format = '<Label> <Timestamp> <Date> <Node> <Time> <NodeRepeat> <Type> <Component> <Level> <Content>'
     tau = 0.75
@@ -25,13 +24,13 @@ if not os.path.exists("./DFOutput"):
     os.makedirs("DFOutput")
 
 if test == 'py':
-    parser = spell.LogParser(indir=base_dir, outdir="HDFSpy",
+    parser = spell.LogParser(indir=base_dir, outdir=output_dir+"HDFSpy",
                              log_format=log_format, tau=tau, logmain=log)
 
     df = parser.parseFile("HDFS_2k")
     df.to_csv("DFOutput/spellpy_output.csv", index=False)
 else:
-    parser = cp.LogParser(in_dir=base_dir, out_dir="HDFSc",
+    parser = cp.LogParser(in_dir=base_dir, out_dir=output_dir+"HDFSc",
                  log_format=log_format, tau=tau, log_main=log)
     df = parser.parse_file("HDFS_2k")
     df.to_csv("DFOutput/cspell_output.csv", index=False)

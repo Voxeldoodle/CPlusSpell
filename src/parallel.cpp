@@ -32,7 +32,8 @@ PYBIND11_MODULE(CPlusSpell, m) {
     py::class_<TrieNode>(m, "TrieNode")
             .def(py::init<>())
             .def(py::init<string &, int &>())
-//            .def_readwrite("cluster", &TrieNode::cluster)
+//            .def_readonly("cluster", &TrieNode::cluster)
+            .def_readwrite("cluster", &TrieNode::cluster)
 //            .def("getCluster", &TrieNode::getCluster)
             .def_readwrite("token", &TrieNode::token)
             .def_readwrite("templateNo", &TrieNode::templateNo)
@@ -40,7 +41,7 @@ PYBIND11_MODULE(CPlusSpell, m) {
             .def(py::pickle(
                     [](const TrieNode &t) { // __getstate__
                         /* Return a tuple that fully encodes the state of the object */
-                        return py::make_tuple(t.getCluster(), t.token, t.templateNo, t.child);
+                        return py::make_tuple(t.cluster, t.token, t.templateNo, t.child);
                     },
                     [](py::tuple t) { // __setstate__
                         if (t.size() != 4)
