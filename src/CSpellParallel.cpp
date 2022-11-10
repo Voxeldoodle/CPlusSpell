@@ -250,40 +250,28 @@ public:
         copy_if (newCluster.logTemplate.begin(), newCluster.logTemplate.end(),
                  back_inserter(seq),
                  [](const string& s){return s != "<*>";});
-        (*parentIter).mutex.lock_shared();
+
+        (*parentIter).writeLock();
         for (const string& tok : seq) {
-            // Assume parentIter locked as Shared
-            checkBranch:
-            if (parentIter->child.count(tok))
+            // Assume parentIter locked
+            if (parentIter->child.count(tok)) {
                 parentIter->child[tok].templateNo++;
-            else{
-                if (!(*parentIter).promoteLock()){
-                    (*parentIter).mutex.unlock_shared();
-                    (*parentIter).mutex.lock_shared();
-                    goto checkBranch;
-                }
-                parentIter->child.insert({tok,TrieNode(tok, 1)});
-                (*parentIter).demoteLock();
             }
+            else{
+                parentIter->child.insert({tok,TrieNode(tok, 1)});
+            }
+            (*parentIter).demoteLock();
             auto old = parentIter;
             // Lock child and unlock parent
-            parentIter->child[tok].mutex.lock_shared();
+            parentIter->child[tok].writeLock();
             parentIter = &parentIter->child[tok];
             (*old).mutex.unlock_shared();
         }
-        finalCheck:
-        // If empty leaf add cluster, else unlock node
+        // If empty leaf add cluster
         if (!parentIter->cluster.has_value()) {
-            if (!(*parentIter).promoteLock()){
-                (*parentIter).mutex.unlock_shared();
-                (*parentIter).mutex.lock_shared();
-                goto finalCheck;
-            }
             parentIter->cluster = newCluster;
-            (*parentIter).writeUnlock();
-        }else {
-            (*parentIter).mutex.unlock_shared();
         }
+        (*parentIter).writeUnlock();
     }
 
     optional<TemplateCluster*> LCSMatch(vector<TemplateCluster> &cluster, vector<string> logMsg){

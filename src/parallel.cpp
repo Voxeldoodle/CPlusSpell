@@ -40,17 +40,20 @@ PYBIND11_MODULE(CPlusSpell, m) {
             .def(py::pickle(
                     [](const TrieNode &t) { // __getstate__
                         /* Return a tuple that fully encodes the state of the object */
-                        vector<string> temp = {};
-                        vector<int> ids = {};
-                        if (t.cluster.has_value()){
-                            cout << "Value" << endl;
-                            temp = t.cluster.value().logTemplate;
-                            ids = t.cluster.value().logIds;
-                        }else
-                            cout << "NO Value" << endl;
-//                        return py::make_tuple(temp, ids,t.token, t.templateNo, t.child);
-//                        return py::make_tuple(t.cluster,t.token, t.templateNo);
-                        return py::make_tuple(t.cluster,t.token, t.templateNo, t.child);
+//                        auto res = py::make_tuple(t.cluster,t.token, t.templateNo, t.child);
+
+                        printf("Tno: %d\n", t.templateNo);
+                        auto children = py::list();
+                        for (const auto &child: t.child) {
+                            children.append(child);
+                        }
+//                        TrieNode res;
+//                        if (t.child.begin() != t.child.end()) {
+//                            cout << t.child.begin()->second.templateNo << endl;
+//                            res = (TrieNode) t.child.begin()->second;
+//                        }
+                        return py::make_tuple(t.cluster,t.token, t.templateNo, children);
+//                        return py::make_tuple(t.cluster,t.token, t.templateNo, t.child);
                     },
                     [](py::tuple t) { // __setstate__
                         if (t.size() != 4)
