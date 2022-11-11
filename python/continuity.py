@@ -7,10 +7,11 @@ import pandas as pd
 from string import ascii_lowercase as abc
 
 log = 'HDFS'
-# base_dir = 'C:/Users/Antonio/Desktop/Tesi Magistrale/Codice/Resources/'
-base_dir = '/mnt/c/Users/Antonio/Desktop/Tesi Magistrale/Codice/Resources/'
+base_dir = '../Resources/'
+# base_dir = '/mnt/c/Users/Antonio/Desktop/Tesi Magistrale/Codice/Resources/'
 # input_dir = '.'
-input_dir = base_dir + f'{log}Split/'
+# input_dir = base_dir + f'{log}Split/'
+input_dir = base_dir
 output_dir = f'../{log}_result/'
 if log == 'BGL':
     log_format = '<Label> <Timestamp> <Date> <Node> <Time> <NodeRepeat> <Type> <Component> <Level> <Content>'

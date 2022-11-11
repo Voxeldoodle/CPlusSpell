@@ -1,13 +1,11 @@
 import hashlib
 import logging
 import os
-import pdb
 import pickle
 import re
 import signal
 import string
 import sys
-import web_pdb
 from datetime import datetime
 from threading import Timer
 
@@ -149,14 +147,7 @@ class LogParser:
 
         logging.info('Parsing done. [Time taken: {!s}]'.format(t1 - t0))
 
-        # web_pdb.set_trace()
-        # pdb.set_trace()
         self.trie_root = self.parser.trieRoot
-        with open("test.pkl", 'wb') as f:
-            pickle.dump(self.trie_root, f)
-
-        exit()
-
         self.cluster_to_df()
 
         if not os.path.exists(self.save_path):

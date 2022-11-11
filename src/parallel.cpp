@@ -42,18 +42,14 @@ PYBIND11_MODULE(CPlusSpell, m) {
                         /* Return a tuple that fully encodes the state of the object */
 //                        auto res = py::make_tuple(t.cluster,t.token, t.templateNo, t.child);
 
-                        printf("Tno: %d\n", t.templateNo);
-                        auto children = py::list();
-                        for (const auto &child: t.child) {
-                            children.append(child);
-                        }
+                        printf("Tno: %lu\n", t.child.size());
 //                        TrieNode res;
 //                        if (t.child.begin() != t.child.end()) {
 //                            cout << t.child.begin()->second.templateNo << endl;
 //                            res = (TrieNode) t.child.begin()->second;
 //                        }
-                        return py::make_tuple(t.cluster,t.token, t.templateNo, children);
-//                        return py::make_tuple(t.cluster,t.token, t.templateNo, t.child);
+//                        return py::make_tuple(t.cluster,t.token, t.templateNo);
+                        return py::make_tuple(t.cluster,t.token, t.templateNo, t.child);
                     },
                     [](py::tuple t) { // __setstate__
                         if (t.size() != 4)
