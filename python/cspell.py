@@ -30,8 +30,8 @@ class LogParser:
             as last entry to specify the variable part.
             Ex: <Timestamp> <Level> <PID>: <Content>
         :param tau: parameter between 0 and 1 to indicate aggregation of variable parts.
-            - 1 means aggregate as much as possible (Node 1, Node 2 -> Node <*>)
-            - 0 leaves the original log as template (Node 1, Node 2 -> Node 1, Node 2)
+            - 0 means aggregate as much as possible (Node 1, Node 2 -> Node <*>)
+            - 1 leaves the original log as template (Node 1, Node 2 -> Node 1, Node 2)
         :param keep_para: output a list of the variable substituted with the placeholder.
             Ex: (Node <*> at <*> -> [1,'127.0.0.1'])
         :param text_max_length: max length allowed for log line.

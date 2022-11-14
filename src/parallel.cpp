@@ -40,15 +40,6 @@ PYBIND11_MODULE(CPlusSpell, m) {
             .def(py::pickle(
                     [](const TrieNode &t) { // __getstate__
                         /* Return a tuple that fully encodes the state of the object */
-//                        auto res = py::make_tuple(t.cluster,t.token, t.templateNo, t.child);
-
-                        printf("Tno: %lu\n", t.child.size());
-//                        TrieNode res;
-//                        if (t.child.begin() != t.child.end()) {
-//                            cout << t.child.begin()->second.templateNo << endl;
-//                            res = (TrieNode) t.child.begin()->second;
-//                        }
-//                        return py::make_tuple(t.cluster,t.token, t.templateNo);
                         return py::make_tuple(t.cluster,t.token, t.templateNo, t.child);
                     },
                     [](py::tuple t) { // __setstate__
@@ -57,8 +48,6 @@ PYBIND11_MODULE(CPlusSpell, m) {
 
                         /* Create a new C++ instance */
                         TrieNode trie(
-//                                *new TemplateCluster(t[0].cast<vector<string>>(),
-//                                                    t[1].cast<vector<int>>()),
                                 t[0].cast<optional<TemplateCluster>>(),
                                 t[1].cast<string>(),
                                 t[2].cast<int>(),

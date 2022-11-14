@@ -155,7 +155,8 @@ public:
 
     TrieNode(const TrieNode& other) {
         lock_guard<shared_mutex> l(other.mutex);
-        cluster = *other.cluster;
+        if (other.cluster.has_value())
+            cluster = other.cluster.value();
         token = other.token;
         templateNo = other.templateNo;
         child = other.child;
@@ -177,7 +178,8 @@ public:
     }
     TrieNode& operator=(const TrieNode&& other)  noexcept {
         lock_guard<shared_mutex> l1(this->mutex), l2(other.mutex);
-        cluster = *other.cluster;
+        if (other.cluster.has_value())
+            cluster = other.cluster.value();
         token = other.token;
         templateNo = other.templateNo;
         child = other.child;
@@ -485,7 +487,6 @@ public:
     }
 };
 
-
 int main()
 {
 //    vector<string> lines = {"PacketResponder 1 for block blk_38865049064139660 terminating",
@@ -496,7 +497,8 @@ int main()
 
 //    ifstream myFile("../Resources/HDFS100k");
 //    ifstream myFile("../Resources/HDFS_2k_Content");
-    ifstream myFile("../Resources/HDFSpartaa");
+//    ifstream myFile("../Resources/HDFSpartaa");
+    ifstream myFile("../Resources/HDFSpartaa_content.csv");
     if(!myFile) //Always test the file open.
     {
         std::cout<<"Error opening output file"<< std::endl;
