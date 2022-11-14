@@ -151,7 +151,7 @@ public:
              string token,
              int templateNo,
              const map<string, TrieNode> &child) :
-            cluster(cluster), token(std::move(token)), templateNo(templateNo), child(child) {}
+            cluster(std::move(cluster)), token(std::move(token)), templateNo(templateNo), child(child) {}
 
     TrieNode(const TrieNode& other) {
         lock_guard<shared_mutex> l(other.mutex);
@@ -393,13 +393,13 @@ public:
 //        return vector<string>();
     }
 
-    void parallel_parse(vector<string> content, int end, int lastLine=0, int ID=0){
-        printf("ID: %d start: %d end: %d.\n", ID, lastLine, end);
+    void parallel_parse(vector<string> content, int start, int end, int lastLine=0, int ID=0){
+        printf("ID: %d start: %d end: %d.\n", ID, start, end);
 
         this->id = ID;
-        for (int i = lastLine+1; i <= end; i++) {
+        for (int i = start+1; i <= end; i++) {
 //            printf("ID: %d line: %d.\n", ID, i);
-            int logID = i;
+            int logID = i+lastLine;
             vector<string> tokMsg = split(content.at(i-1), "[\\s=:,]");
             vector<string> constLogMsg;
             copy_if (tokMsg.begin(), tokMsg.end(),
@@ -477,7 +477,7 @@ public:
         int chunk = (int)content.size() / tMax;
         for (int i = 0; i < tMax; ++i) {
             int start = chunk * i;
-            threads.emplace_back(&Parser::parallel_parse, this,content, chunk * (i+1), start, i);
+            threads.emplace_back(&Parser::parallel_parse, this,content, start, chunk * (i+1), lastLine, i);
         }
 
         for (auto& th : threads)

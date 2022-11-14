@@ -147,7 +147,6 @@ class LogParser:
 
         logging.info('Parsing done. [Time taken: {!s}]'.format(t1 - t0))
 
-        self.trie_root = self.parser.trieRoot
         self.cluster_to_df()
 
         if not os.path.exists(self.save_path):
@@ -155,9 +154,10 @@ class LogParser:
         if persistence:
             self.output_result()
 
-
         # Update last_line for next execution if called in batch
         self.set_last_line_id()
+
+        self.trie_root = self.parser.trieRoot
 
         root_node_path = os.path.join(self.save_path, 'rootNode.pkl')
         log_clu_l_path = os.path.join(self.save_path, 'logCluL.pkl')
