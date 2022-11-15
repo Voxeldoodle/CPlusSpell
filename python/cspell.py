@@ -37,7 +37,7 @@ class LogParser:
         :param text_max_length: max length allowed for log line.
         :param log_main: name of the main log to output to.
         :param updated_templates: whether to update the templates in *_main_structured.csv every time (True)
-            or simply append the new parsed result without updating the old templates (False).
+            or simply append the new parsed result without updating the old templates (default=False).
 
         """
         # Attributes in priority order (from most necessary to optional)
@@ -77,7 +77,7 @@ class LogParser:
 
     def set_last_line_id(self):
         for logClust in self.log_cluster_lines:
-            max_line = max(logClust.logIDL)
+            max_line = max(logClust.logIDL, default=0)
             if max_line > self.last_line_id:
                 self.last_line_id = max_line
 
@@ -135,7 +135,7 @@ class LogParser:
         Main function responsible for parsing the log lines
         contained inside self.df_log["Content"]
         :param persistence: if you want to save the result to file
-        :return: dataframe with the log lines split as the regex plus the columns:
+        :return: dataframe with the log lines split according to the regex plus the following columns:
             - EventId: hashed value from EventTemplate
             - EventTemplate: template representing the log.
             - ParameterList: if self.keep_para set to True. List of tokens substituted by <*>.
@@ -251,6 +251,9 @@ class LogParser:
 
         self.df_log.to_csv(os.path.join(self.save_path, self.log_name + '_structured.csv'), index=False)
         self.df_event.to_csv(os.path.join(self.save_path, self.log_name + '_templates.csv'), index=False)
+
+    def purgeIDs(self):
+        self.parser.purgeIDs()
 
     @staticmethod
     def start_timer(handler):

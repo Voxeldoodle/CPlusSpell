@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 #include <regex>
 #include <map>
@@ -12,7 +13,7 @@
 
 using namespace std;
 
-vector<string> split(string s, const string& delimiter){
+vector<string> split(string s, const string& delimiter = "[\\s=:,]"){
     vector<string> res;
 
     regex rgx(delimiter);
@@ -32,6 +33,8 @@ public:
     vector<string> logTemplate;
     vector<int> logIds;
     TemplateCluster(){}
+    TemplateCluster(vector<string> tmp)
+            : logTemplate(std::move(tmp)){}
     TemplateCluster(vector<string> tmp, vector<int> ids)
             : logTemplate(tmp), logIds(ids){}
 };
@@ -65,6 +68,33 @@ public:
             : tau(tau){}
     Parser(vector<TemplateCluster> logClust, TrieNode trieRoot, float tau)
             : logClust(logClust), trieRoot(trieRoot), tau(tau){}
+
+    void addTemplate(string newTemplate){
+        auto logTemplate = split(std::move(newTemplate));
+        addTemplate(logTemplate);
+    }
+    void addTemplate(vector<string> newTemplate){
+        auto newCluster = TemplateCluster(std::move(newTemplate));
+        logClust.push_back(newCluster);
+        addSeqToPrefixTree(trieRoot, newCluster);
+    }
+
+    void purgeIDs(){
+        int max = 0;
+        for (auto &clust: logClust) {
+            int tmp = *std::max_element(clust.logIds.begin(), clust.logIds.end());
+            max = tmp > max ? tmp : max;
+        }
+        for (auto &clust: logClust) {
+            int tmp = *std::max_element(clust.logIds.begin(), clust.logIds.end());
+            if (tmp < max)
+                clust.logIds.clear();
+            else{
+                clust.logIds.clear();
+                clust.logIds.push_back(max);
+            }
+        }
+    }
 
     vector<string> getTemplate(vector<string> lcs, vector<string> seq) {
 //        cout << "getTemplate START" << endl;

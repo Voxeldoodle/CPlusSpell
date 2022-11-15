@@ -77,6 +77,18 @@ PYBIND11_MODULE(CPlusSpell, m) {
                 py::arg("prefixTreeRoot"), py::arg("newCluster"))
         .def("getTemplate", &Parser::getTemplate,
                 "Generate Template from partial message obtained via LCS",
-                py::arg("lcs"), py::arg("seq"));
+                py::arg("lcs"), py::arg("seq"))
+//        .def("addTemplate", &Parser::addTemplate,
+//             "Manually add custom template to parser structures",
+//             py::arg("newTemplate"))
+        .def("addTemplate", py::overload_cast<std::string>(&Parser::addTemplate),
+             "Manually add custom template to parser structures",
+             py::arg("newTemplate"))
+        .def("addTemplate", py::overload_cast<std::vector<std::string>>(&Parser::addTemplate),
+             "Manually add custom template to parser structures",
+             py::arg("newTemplate"))
+        .def("purgeIDs", &Parser::purgeIDs,
+             "Clear cache by removing the association of all templates to their lines"
+             "except for the greatest one, which is used to determined last line parsed");
 
 }

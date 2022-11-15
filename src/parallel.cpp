@@ -74,7 +74,16 @@ PYBIND11_MODULE(CPlusSpell, m) {
                 py::arg("cluster"), py::arg("logMsg"))
         .def("addSeqToPrefixTree", &Parser::addSeqToPrefixTree,
                 "Add Template to trie",
-                py::arg("prefixTreeRoot"), py::arg("newCluster"));
+                py::arg("prefixTreeRoot"), py::arg("newCluster"))
+        .def("addTemplate", py::overload_cast<std::string>(&Parser::addTemplate),
+             "Manually add custom template to parser structures",
+             py::arg("newTemplate"))
+        .def("addTemplate", py::overload_cast<std::vector<std::string>>(&Parser::addTemplate),
+             "Manually add custom template to parser structures",
+             py::arg("newTemplate"))
+        .def("purgeIDs", &Parser::purgeIDs,
+             "Clear cache by removing the association of all templates to their lines"
+             "except for the greatest one, which is used to determined last line parsed");;
     m.def("LCS", &LCS,
           "Longest Common Subsequence between String Arrays",
           py::arg("seq1"),py::arg("seq2"));
