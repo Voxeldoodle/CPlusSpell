@@ -94,6 +94,17 @@ public:
                 clust.logIds.push_back(max);
             }
         }
+
+        purgeTreeIDs(trieRoot);
+    }
+
+    void purgeTreeIDs(TrieNode& tree){
+        if (tree.cluster.has_value()){
+            tree.cluster.value().logIds.clear();
+        }
+        for (auto &child: tree.child) {
+            purgeTreeIDs(child.second);
+        }
     }
 
     vector<string> getTemplate(vector<string> lcs, vector<string> seq) {

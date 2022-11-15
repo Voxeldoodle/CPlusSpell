@@ -254,6 +254,7 @@ class LogParser:
 
     def purgeIDs(self):
         self.parser.purgeIDs()
+        self.log_cluster_lines = self.parser.logClust
 
     @staticmethod
     def start_timer(handler):

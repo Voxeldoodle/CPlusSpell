@@ -234,6 +234,20 @@ public:
             }
         }
         clustLock.unlock();
+        purgeTreeIDs(trieRoot);
+
+    }
+
+    void purgeTreeIDs(TrieNode& tree){
+        tree.writeLock();
+        if (tree.cluster.has_value()){
+            tree.cluster.value().logIds.clear();
+        }
+        for (auto &child: tree.child) {
+            purgeTreeIDs(child.second);
+        }
+        tree.writeUnlock();
+
     }
 
     void removeSeqFromPrefixTree(TrieNode& prefixTreeRoot, vector<string> logTemplate){
